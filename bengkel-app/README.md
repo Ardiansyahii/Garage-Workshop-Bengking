@@ -36,7 +36,7 @@ website-bengkel/
 │   ├── next.config.mjs
 │   └── .env.local
 ├── README.md
-└── LICENSE (jika ada)
+
 ```
 
 ## Persyaratan
@@ -94,7 +94,7 @@ npm run dev
 Jika berhasil, server akan berjalan di:
 
 ```bash
-http://localhost:5000
+http://localhost:4000
 ```
 
 ## 3. Setup Frontend
@@ -109,7 +109,7 @@ npm install
 Buat file `.env.local` di dalam folder `bengkel-app`:
 
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:5000
+NEXT_PUBLIC_API_URL=http://localhost:4000
 ```
 
 Jalankan frontend:
@@ -126,7 +126,7 @@ http://localhost:3000
 
 ## 4. Login & Akses Aplikasi
 
-Setelah server aktif, Anda bisa masuk ke aplikasi melalui halaman login/register. Role yang tersedia biasanya meliputi:
+Setelah server aktif, Anda bisa masuk ke aplikasi melalui halaman login/register. Role yang tersedia meliputi:
 
 - User / pelanggan
 - Admin bengkel
@@ -138,7 +138,7 @@ Setelah server aktif, Anda bisa masuk ke aplikasi melalui halaman login/register
 Backend tersedia di URL:
 
 ```bash
-http://localhost:5000/api
+http://localhost:4000/api
 ```
 
 Beberapa route utama:
@@ -180,18 +180,11 @@ npm run lint
 
 ## 8. Kontribusi
 
-Project ini dapat dikembangkan lebih lanjut dengan menambahkan:
+Project ini akan dikembangkan lebih lanjut dengan menambahkan:
 
 - notifikasi WhatsApp/Fonnte
 - dashboard analytics
 - export laporan PDF
-- integrasi payment gateway
 - mobile friendly optimization
 
-## 9. Lisensi
-
-Project ini dibuat untuk kebutuhan pembelajaran dan pengembangan aplikasi booking bengkel. Sesuaikan lisensi jika project akan dipublikasikan atau dikembangkan bersama tim.
-
 ---
-
-Jika Anda mau, saya juga bisa bantu membuat versi README yang lebih formal, lebih modern, atau versi yang siap ditaruh di GitHub dengan badge, screenshot, dan struktur yang lebih rapi.
