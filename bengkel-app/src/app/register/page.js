@@ -99,7 +99,7 @@ export default function RegisterPage() {
         <img
           src="/banner-bg.png"
           alt="Workshop Background"
-          className="w-full h-full object-cover object-center filter brightness-[0.5] contrast-125"
+          className="w-full h-full object-cover object-center filter brightness-[0.8] contrast-125"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/80 to-black/60 backdrop-blur-[2px]" />
       </div>

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
+import { fetchWithAuth } from "@/utils/api";
 import {
   Wrench,
   ArrowLeft,
@@ -57,13 +58,12 @@ export default function BookingPage() {
     }
     setUser(JSON.parse(session));
 
-    // Ambil daftar bengkel
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/bengkels`)
-      .then((res) => res.json())
+    fetchWithAuth(`/api/bengkels`)
       .then((data) => {
-        if (data.success) setBengkels(data.data || []);
+        if (data?.success) setBengkels(data.data || []);
         setIsLoading(false);
-      });
+      })
+      .catch(() => setIsLoading(false));
   }, []);
 
   // 2. Handler Saat Bengkel Dipilih
@@ -78,16 +78,14 @@ export default function BookingPage() {
     }); // Reset form terkait
 
     // Fetch Layanan dari Bengkel ini
-    fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/services?bengkel_id=${bengkel.id}`,
-    )
-      .then((res) => res.json())
-      .then((data) => setServices(data.success ? data.data : []));
+    fetchWithAuth(`/api/services?bengkel_id=${bengkel.id}`).then((data) =>
+      setServices(data?.success ? data.data : []),
+    );
 
     // Fetch Jadwal dari Bengkel ini
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/schedules/${bengkel.id}`)
-      .then((res) => res.json())
-      .then((data) => setSchedules(data.success ? data.data : []));
+    fetchWithAuth(`/api/schedules/${bengkel.id}`).then((data) =>
+      setSchedules(data?.success ? data.data : []),
+    );
   };
 
   // 3. Handler Saat Kembali ke Daftar Bengkel
@@ -215,18 +213,12 @@ export default function BookingPage() {
     };
 
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/bookings`,
-        {
-          // Pastikan endpoint di backend mu benar
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        },
-      );
+      const data = await fetchWithAuth(`/api/bookings`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
 
-      const data = await res.json();
-      if (data.success) {
+      if (data?.success) {
         Swal.fire({
           icon: "success",
           title: "Booking Berhasil!",

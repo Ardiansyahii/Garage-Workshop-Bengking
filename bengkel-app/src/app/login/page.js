@@ -15,7 +15,6 @@ import {
   Clock,
 } from "lucide-react";
 
-// Variabel Animasi untuk Framer Motion
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
@@ -39,7 +38,7 @@ export default function LoginPage() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setIsLoading(true); // Memperbaiki bug: set loading ke true saat mulai
+    setIsLoading(true);
 
     try {
       const res = await fetch(
@@ -54,22 +53,11 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (data.success) {
-        // 1. Tolak Pelanggan (Mereka wajib pakai aplikasi mobile)[cite: 1]
-        if (data.role === "pelanggan") {
-          Swal.fire({
-            icon: "error",
-            title: "Akses Ditolak",
-            text: "Pelanggan hanya dapat masuk melalui Aplikasi Mobile!",
-            background: "#09090b",
-            color: "#f4f4f5",
-            confirmButtonColor: "#dc2626",
-          });
-          setIsLoading(false);
-          return;
-        }
-
-        // 2. Simpan sesi ke localStorage
+        // 1. Simpan sesi ke localStorage
+        localStorage.setItem("user", JSON.stringify(data.user));
         localStorage.setItem("user_session", JSON.stringify(data.user));
+        localStorage.setItem("auth_token", data.token);
+        document.cookie = `user_role=${data.role}; path=/; max-age=86400`;
 
         Swal.fire({
           icon: "success",
@@ -80,11 +68,15 @@ export default function LoginPage() {
           timer: 1500,
           showConfirmButton: false,
         }).then(() => {
-          // 3. Arahkan ke rute yang tepat berdasarkan Role
+          // 2. Arahkan ke rute yang TEPAT berdasarkan Role masing-masing
           if (data.role === "superadmin") {
             window.location.href = "/superadmin";
           } else if (data.role === "admin_bengkel") {
-            window.location.href = "/admin-bengkel"; // Sesuaikan dengan folder dashboard adminmu
+            window.location.href = "/admin";
+          } else if (data.role === "pelanggan") {
+            window.location.href = "/dashboard";
+          } else {
+            window.location.href = "/";
           }
         });
       } else {
@@ -114,9 +106,7 @@ export default function LoginPage() {
 
   return (
     <main className="relative min-h-screen flex flex-col md:flex-row text-white font-sans antialiased overflow-hidden selection:bg-red-600 selection:text-white">
-      {/* ==========================================
-          BACKGROUND GLOBAL
-      ========================================== */}
+      {/* BACKGROUND GLOBAL */}
       <div className="absolute inset-0 z-0 fixed pointer-events-none">
         <img
           src="/banner-bg.png"
@@ -126,11 +116,8 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/80 to-black/60 backdrop-blur-[2px]" />
       </div>
 
-      {/* ==========================================
-          SISI KIRI: PANEL INFORMASI
-      ========================================== */}
+      {/* SISI KIRI: PANEL INFORMASI */}
       <section className="relative z-10 w-full md:w-5/12 p-8 md:p-12 lg:p-16 flex flex-col justify-between md:h-screen border-r border-zinc-900/80 bg-zinc-950/30 backdrop-blur-md">
-        {/* Tombol Back */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -145,7 +132,6 @@ export default function LoginPage() {
           </Link>
         </motion.div>
 
-        {/* Konten Teks & Fitur */}
         <motion.div
           initial="hidden"
           animate="visible"
@@ -176,11 +162,10 @@ export default function LoginPage() {
             variants={fadeUp}
             className="text-zinc-400 text-sm leading-relaxed mb-10 max-w-sm"
           >
-            Portal akses eksklusif bagi administrator dan pemilik bengkel untuk
+            Portal akses eksklusif bagi administrator dan pengguna untuk
             mengelola operasional harian.
           </motion.p>
 
-          {/* List Fitur Informatif */}
           <motion.div variants={staggerContainer} className="space-y-5">
             <motion.div variants={fadeUp} className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center shrink-0">
@@ -221,30 +206,25 @@ export default function LoginPage() {
                   Sistem Aman Terenkripsi
                 </h3>
                 <p className="text-xs text-zinc-500 mt-0.5">
-                  Data operasional bengkel Anda tersimpan aman dengan enkripsi
-                  tinggi.
+                  Data operasional tersimpan aman dengan enkripsi tinggi.
                 </p>
               </div>
             </motion.div>
           </motion.div>
         </motion.div>
 
-        {/* Footer Kecil Kiri */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8 }}
           className="text-[10px] text-zinc-600 font-medium"
         >
-          &copy; {new Date().getFullYear()} BENGKELKU. Internal Access Only.
+          &copy; {new Date().getFullYear()} BENGKELKU. System Access.
         </motion.div>
       </section>
 
-      {/* ==========================================
-          SISI KANAN: FORM LOGIN
-      ========================================== */}
+      {/* SISI KANAN: FORM LOGIN */}
       <section className="relative z-10 w-full md:w-7/12 flex items-center justify-center p-6 md:p-12 lg:p-20">
-        {/* Efek Cahaya Belakang Form */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-red-600/10 rounded-full blur-[100px] pointer-events-none" />
 
         <motion.div
@@ -328,6 +308,17 @@ export default function LoginPage() {
                 className="text-red-500 font-bold hover:text-red-400 transition ml-1"
               >
                 Daftar Kemitraan
+              </Link>
+            </p>
+          </div>
+          <div className="mt-8 pt-6 border-t border-zinc-800/80 text-center">
+            <p className="text-xs text-zinc-400">
+              Belum punya akun?{" "}
+              <Link
+                href="/register"
+                className="text-red-500 font-bold hover:text-red-400 transition ml-1 hover:underline"
+              >
+                register di sini
               </Link>
             </p>
           </div>

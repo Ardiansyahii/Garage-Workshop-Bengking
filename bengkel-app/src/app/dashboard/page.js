@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Swal from "sweetalert2";
 import EmptyState from "@/components/EmptyState";
+import { fetchWithAuth } from "@/utils/api";
 import {
   Wrench,
   PlusCircle,
@@ -19,7 +20,14 @@ import {
 } from "lucide-react";
 
 export default function UserDashboard() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    const storedUser =
+      typeof window !== "undefined"
+        ? localStorage.getItem("user") || localStorage.getItem("user_session")
+        : null;
+
+    return storedUser ? JSON.parse(storedUser) : null;
+  });
   const [bookings, setBookings] = useState([]);
   const [activeTab, setActiveTab] = useState("Semua");
   const [isLoading, setIsLoading] = useState(true);
@@ -36,34 +44,40 @@ export default function UserDashboard() {
   ];
 
   const fetchBookings = (userId) => {
-    fetch(`/api/user-bookings?userId=${userId}`)
-      .then((res) => res.json())
+    fetchWithAuth(`/api/user-bookings?userId=${userId}`)
       .then((data) => {
-        if (data.success) {
+        if (data?.success) {
           setBookings(data.data);
         }
         setIsLoading(false);
-      });
+      })
+      .catch(() => setIsLoading(false));
   };
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (!storedUser) {
+    if (!user) {
       window.location.href = "/login";
       return;
     }
 
-    const parsedUser = JSON.parse(storedUser);
-    setUser(parsedUser);
-
-    fetchBookings(parsedUser.id);
+    localStorage.setItem("user", JSON.stringify(user));
+    fetchBookings(user.id);
 
     const interval = setInterval(() => {
-      fetchBookings(parsedUser.id);
+      fetchBookings(user.id);
     }, 3000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [user]);
+
+  const clearAuthSession = () => {
+    localStorage.removeItem("user");
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("user_session");
+    document.cookie = "user_role=; path=/; max-age=0";
+    document.cookie =
+      "user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+  };
 
   const handleLogout = () => {
     Swal.fire({
@@ -79,8 +93,8 @@ export default function UserDashboard() {
       color: "#f4f4f5",
     }).then((result) => {
       if (result.isConfirmed) {
-        localStorage.removeItem("user");
-        window.location.href = "/login";
+        clearAuthSession();
+        window.location.replace("/login");
       }
     });
   };
@@ -107,13 +121,10 @@ export default function UserDashboard() {
 
     if (cancelReason) {
       try {
-        const res = await fetch("/api/booking/cancel", {
+        const data = await fetchWithAuth("/api/booking/cancel", {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ booking_id: bookingId, reason: cancelReason }),
         });
-
-        const data = await res.json();
 
         if (data.success) {
           Swal.fire({
@@ -181,9 +192,8 @@ export default function UserDashboard() {
 
     if (formValues) {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/bookings?user_id=${user.id}`, {
+        const data = await fetchWithAuth(`/api/bookings?user_id=${user.id}`, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             booking_id: bookingId,
             new_date: formValues.date,
@@ -191,8 +201,6 @@ export default function UserDashboard() {
             reason: formValues.reason,
           }),
         });
-
-        const data = await res.json();
         if (data.success) {
           Swal.fire({
             icon: "success",

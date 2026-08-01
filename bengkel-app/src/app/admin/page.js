@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Swal from "sweetalert2";
+import { motion, AnimatePresence } from "framer-motion";
+import { fetchWithAuth } from "@/utils/api";
 import {
   Wrench,
   LogOut,
@@ -12,24 +14,39 @@ import {
   Briefcase,
   CalendarClock,
   Edit,
+  Menu,
+  X,
+  Store,
+  Activity,
+  Clock,
 } from "lucide-react";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from "recharts";
 
 export default function AdminBengkelDashboard() {
   const [user, setUser] = useState(null);
-  const [activeTab, setActiveTab] = useState("booking"); // Tab aktif: booking, layanan, jadwal
+  const [activeTab, setActiveTab] = useState("booking");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const [bookings, setBookings] = useState([]);
   const [services, setServices] = useState([]);
-
   const [newService, setNewService] = useState({
     service_name: "",
     price: "",
     description: "",
   });
-
-  // state pencarian
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Filter Pencarian
   const filteredBookings = bookings.filter((bk) => {
     const query = searchQuery.toLowerCase();
     return (
@@ -40,9 +57,21 @@ export default function AdminBengkelDashboard() {
     );
   });
 
-  // ==========================================
-  // STATE JADWAL BENGKEL
-  // ==========================================
+  // Kalkulasi Statistik & Data untuk Recharts
+  const statMenunggu = bookings.filter((b) => b.status === "Menunggu").length;
+  const statDiproses = bookings.filter((b) => b.status === "Diproses").length;
+  const statSelesai = bookings.filter((b) => b.status === "Selesai").length;
+  const statBatal = bookings.filter((b) => b.status === "Batal").length;
+
+  // Format array data khusus untuk library Recharts
+  const chartData = [
+    { status: "Menunggu", jumlah: statMenunggu, fill: "#eab308" }, // Kuning
+    { status: "Diproses", jumlah: statDiproses, fill: "#3b82f6" }, // Biru
+    { status: "Selesai", jumlah: statSelesai, fill: "#10b981" }, // Hijau
+    { status: "Batal", jumlah: statBatal, fill: "#ef4444" }, // Merah
+  ];
+
+  // State Jadwal
   const [schedules, setSchedules] = useState([]);
   const [formSchedule, setFormSchedule] = useState({
     id: null,
@@ -54,34 +83,33 @@ export default function AdminBengkelDashboard() {
   const [isEditingSchedule, setIsEditingSchedule] = useState(false);
 
   useEffect(() => {
-    // Cek Sesi: Pastikan hanya Admin Bengkel yang bisa masuk
     const session = localStorage.getItem("user_session");
     if (!session) {
       window.location.href = "/login";
       return;
     }
-
     const parsedUser = JSON.parse(session);
     if (parsedUser.role !== "admin_bengkel" || !parsedUser.bengkel_id) {
       window.location.href = "/login";
       return;
     }
-
     setUser(parsedUser);
   }, []);
 
-  // Fetch data berjalan setelah state user terisi
   useEffect(() => {
     if (user) {
       fetchServices();
       fetchBookings();
       fetchSchedules(user.bengkel_id);
-      
     }
   }, [user, searchQuery]);
 
   const handleLogout = () => {
+    localStorage.removeItem("user");
     localStorage.removeItem("user_session");
+    localStorage.removeItem("auth_token");
+    document.cookie =
+      "user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     window.location.href = "/login";
   };
 
@@ -89,21 +117,18 @@ export default function AdminBengkelDashboard() {
   // FITUR: CRUD LAYANAN (SERVICES)
   // ==========================================
   const fetchServices = async () => {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/services?bengkel_id=${user.bengkel_id}`,
+    const data = await fetchWithAuth(
+      `/api/services?bengkel_id=${user.bengkel_id}`,
     );
-    const data = await res.json();
-    if (data.success) setServices(data.data || []);
+    if (data?.success) setServices(data.data || []);
   };
 
   const handleAddService = async (e) => {
     e.preventDefault();
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/services`, {
+    const data = await fetchWithAuth(`/api/services`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...newService, bengkel_id: user.bengkel_id }),
     });
-    const data = await res.json();
     if (data.success) {
       Swal.fire({
         icon: "success",
@@ -111,6 +136,7 @@ export default function AdminBengkelDashboard() {
         text: data.message,
         background: "#09090b",
         color: "#f4f4f5",
+        confirmButtonColor: "#dc2626",
       });
       setNewService({ service_name: "", price: "", description: "" });
       fetchServices();
@@ -127,12 +153,10 @@ export default function AdminBengkelDashboard() {
       color: "#f4f4f5",
     });
     if (confirm.isConfirmed) {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/services/${id}`,
-        { method: "DELETE" },
-      );
-      const data = await res.json();
-      if (data.success) fetchServices();
+      const data = await fetchWithAuth(`/api/services/${id}`, {
+        method: "DELETE",
+      });
+      if (data?.success) fetchServices();
     }
   };
 
@@ -140,23 +164,17 @@ export default function AdminBengkelDashboard() {
   // FITUR: CRUD & PENCARIAN BOOKING
   // ==========================================
   const fetchBookings = async () => {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/bookings?bengkel_id=${user.bengkel_id}&search=${searchQuery}`,
+    const data = await fetchWithAuth(
+      `/api/bookings?bengkel_id=${user.bengkel_id}&search=${searchQuery}`,
     );
-    const data = await res.json();
-    if (data.success) setBookings(data.data || []);
+    if (data?.success) setBookings(data.data || []);
   };
 
   const handleStatusChange = async (id, newStatus) => {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/bookings/${id}/status`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      },
-    );
-    const data = await res.json();
+    const data = await fetchWithAuth(`/api/bookings/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: newStatus }),
+    });
     if (data.success) {
       fetchBookings();
     } else {
@@ -166,35 +184,105 @@ export default function AdminBengkelDashboard() {
         text: data.message,
         background: "#09090b",
         color: "#f4f4f5",
+        confirmButtonColor: "#dc2626",
       });
     }
+  };
+
+  // ==========================================
+  // FITUR: CETAK LAPORAN PDF (MENGGUNAKAN LIBRARY JSPDF)
+  // ==========================================
+  const handleExportPDF = () => {
+    if (filteredBookings.length === 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Kosong",
+        text: "Tidak ada data untuk dicetak menjadi PDF.",
+        background: "#09090b",
+        color: "#f4f4f5",
+      });
+      return;
+    }
+
+    const doc = new jsPDF();
+
+    // 1. Desain Kop / Judul Dokumen di dalam PDF
+    doc.setFontSize(16);
+    doc.setTextColor(220, 38, 38); // Warna merah khas Apex Garage
+    doc.text("LAPORAN ANTREAN & TRANSAKSI BENGKEL", 14, 20);
+
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(
+      `Dicetak Oleh: ${user.name} (ID Bengkel: ${user.bengkel_id})`,
+      14,
+      28,
+    );
+    doc.text(`Waktu Cetak: ${new Date().toLocaleString("id-ID")}`, 14, 34);
+
+    // 2. Format Kolom dan Baris Tabel
+    const tableColumns = [
+      "Kode",
+      "Tanggal",
+      "Pelanggan",
+      "Kendaraan",
+      "Plat Nomor",
+      "Layanan",
+      "Status",
+    ];
+    const tableRows = filteredBookings.map((b) => [
+      b.booking_code,
+      `${new Date(b.booking_date).toLocaleDateString("id-ID")}`,
+      b.customer_name,
+      b.vehicle_name,
+      b.license_plate,
+      b.service_name,
+      b.status,
+    ]);
+
+    // 3. Render Tabel otomatis menggunakan jspdf-autotable
+    doc.autoTable({
+      head: [tableColumns],
+      body: tableRows,
+      startY: 40,
+      theme: "grid",
+      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { fillColor: [220, 38, 38], textColor: [255, 255, 255] },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
+    });
+
+    // 4. Unduh file PDF otomatis
+    doc.save(`Laporan_Servis_Bengkel_${user.bengkel_id}_${Date.now()}.pdf`);
+
+    Swal.fire({
+      icon: "success",
+      title: "PDF Berhasil Dicetak!",
+      text: "File laporan transaksi telah diunduh ke komputer Anda.",
+      background: "#09090b",
+      color: "#f4f4f5",
+      timer: 1500,
+      showConfirmButton: false,
+    });
   };
 
   // ==========================================
   // FITUR: CRUD JADWAL OPERASIONAL
   // ==========================================
   const fetchSchedules = async (bengkelId) => {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/schedules/${bengkelId}`,
-    );
-    const data = await res.json();
-    if (data.success) setSchedules(data.data || []);
+    const data = await fetchWithAuth(`/api/schedules/${bengkelId}`);
+    if (data?.success) setSchedules(data.data || []);
   };
 
   const handleSubmitSchedule = async (e) => {
     e.preventDefault();
     const url = isEditingSchedule
-      ? `${process.env.NEXT_PUBLIC_API_URL}/api/schedules/${formSchedule.id}`
-      : `${process.env.NEXT_PUBLIC_API_URL}/api/schedules`;
+      ? `/api/schedules/${formSchedule.id}`
+      : `/api/schedules`;
     const method = isEditingSchedule ? "PUT" : "POST";
-
-    const res = await fetch(url, {
+    const data = await fetchWithAuth(url, {
       method,
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...formSchedule, bengkel_id: user.bengkel_id }),
     });
-    const data = await res.json();
-
     if (data.success) {
       Swal.fire({
         icon: "success",
@@ -202,6 +290,7 @@ export default function AdminBengkelDashboard() {
         text: data.message,
         background: "#09090b",
         color: "#f4f4f5",
+        confirmButtonColor: "#dc2626",
       });
       handleResetFormSchedule();
       fetchSchedules(user.bengkel_id);
@@ -212,6 +301,7 @@ export default function AdminBengkelDashboard() {
         text: data.message,
         background: "#09090b",
         color: "#f4f4f5",
+        confirmButtonColor: "#dc2626",
       });
     }
   };
@@ -237,12 +327,10 @@ export default function AdminBengkelDashboard() {
       color: "#f4f4f5",
     });
     if (confirm.isConfirmed) {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/schedules/${id}`,
-        { method: "DELETE" },
-      );
-      const data = await res.json();
-      if (data.success) fetchSchedules(user.bengkel_id);
+      const data = await fetchWithAuth(`/api/schedules/${id}`, {
+        method: "DELETE",
+      });
+      if (data?.success) fetchSchedules(user.bengkel_id);
     }
   };
 
@@ -257,468 +345,702 @@ export default function AdminBengkelDashboard() {
     setIsEditingSchedule(false);
   };
 
+  // Konfigurasi Navigasi Sidebar
+  const navItems = [
+    {
+      id: "booking",
+      label: "Pesanan Masuk",
+      icon: ClipboardList,
+      badge: bookings.filter((b) => b.status === "Menunggu").length,
+    },
+    { id: "layanan", label: "Kelola Layanan", icon: Briefcase },
+    { id: "jadwal", label: "Jadwal Operasional", icon: CalendarClock },
+  ];
+
   if (!user)
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center font-bold text-zinc-500">
-        Memuat Data Bengkel...
+      <div className="min-h-screen bg-black flex items-center justify-center text-zinc-500 font-bold">
+        <div className="animate-pulse flex items-center gap-2">
+          <Store className="w-5 h-5 text-red-600" /> Memuat Ruang Kerja...
+        </div>
       </div>
     );
 
   return (
-    <main className="relative min-h-screen bg-black font-sans">
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <img
-          src="/workshop-bg.png"
-          alt="Background"
-          className="w-full h-full object-cover brightness-[0.8]"
-        />
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      </div>
+    <main className="min-h-screen bg-black text-white font-sans flex overflow-hidden selection:bg-red-600">
+      {/* =========================================================
+          SIDEBAR KIRI (DESKTOP & MOBILE)
+      ========================================================= */}
+      {/* Overlay Mobile */}
+      <div
+        className={`fixed inset-0 bg-black/80 z-40 lg:hidden transition-opacity duration-300 ${isMobileMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+        onClick={() => setIsMobileMenuOpen(false)}
+      />
 
-      <div className="relative z-10 p-6 md:p-8">
-        <div className="max-w-7xl mx-auto space-y-8">
-          {/* HEADER */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-zinc-950 p-6 rounded-3xl border border-zinc-900 shadow-xl">
+      <aside
+        className={`fixed lg:static top-0 left-0 h-full w-72 bg-zinc-950/80 backdrop-blur-xl border-r border-zinc-900/80 z-50 flex flex-col transition-transform duration-300 ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
+      >
+        {/* Header / Logo Sidebar */}
+        <div className="p-6 md:p-8 flex items-center justify-between border-b border-zinc-900/50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-red-600 flex items-center justify-center shadow-lg shadow-red-600/20">
+              <Wrench className="w-5 h-5 text-white" />
+            </div>
             <div>
-              <h1 className="text-xl font-black text-white flex items-center gap-2">
-                <Wrench className="w-5 h-5 text-red-600" /> PANEL ADMIN BENGKEL
+              <h1 className="text-lg font-black tracking-wider leading-none">
+                MITRA<span className="text-red-600">BENGKEL</span>
               </h1>
-              <p className="text-xs text-zinc-400 mt-1">
-                Mengelola operasional bengkel: {user.name}
+              <p className="text-[10px] text-zinc-500 font-mono mt-1">
+                APEX GARAGE SYSTEM
               </p>
             </div>
-            <button
-              onClick={handleLogout}
-              className="bg-zinc-900 hover:bg-red-600 text-zinc-300 hover:text-white font-bold px-5 py-2.5 rounded-xl border border-zinc-800 text-xs flex items-center gap-1.5 transition"
-            >
-              <LogOut className="w-4 h-4" /> Logout
-            </button>
           </div>
+          <button
+            className="lg:hidden text-zinc-500 hover:text-white"
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
-          {/* TAB MENU */}
-          <div className="flex flex-wrap gap-4 border-b border-zinc-900 pb-4">
-            <button
-              onClick={() => setActiveTab("booking")}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition ${activeTab === "booking" ? "bg-red-600 text-white" : "bg-zinc-900 text-zinc-400 hover:text-white"}`}
-            >
-              <ClipboardList className="w-4 h-4" /> Pesanan (Booking)
-            </button>
-            <button
-              onClick={() => setActiveTab("layanan")}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition ${activeTab === "layanan" ? "bg-red-600 text-white" : "bg-zinc-900 text-zinc-400 hover:text-white"}`}
-            >
-              <Briefcase className="w-4 h-4" /> Kelola Layanan
-            </button>
-            <button
-              onClick={() => setActiveTab("jadwal")}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition ${activeTab === "jadwal" ? "bg-red-600 text-white" : "bg-zinc-900 text-zinc-400 hover:text-white"}`}
-            >
-              <CalendarClock className="w-4 h-4" /> Jadwal Operasional
-            </button>
+        {/* User Info (Mini Profile) */}
+        <div className="px-6 py-5 mx-4 mt-4 bg-zinc-900/50 rounded-2xl border border-zinc-800/50 flex flex-col gap-1">
+          <p className="text-xs text-zinc-500 font-medium">Administrator:</p>
+          <p className="text-sm font-bold text-white truncate">{user.name}</p>
+          <div className="w-full h-px bg-zinc-800/80 my-2"></div>
+          <div className="flex items-center gap-2 text-xs text-red-500 font-bold">
+            <Store className="w-3.5 h-3.5" /> ID Bengkel: #{user.bengkel_id}
           </div>
+        </div>
 
-          {/* KONTEN TAB: BOOKING */}
-          {activeTab === "booking" && (
-            <div className="bg-zinc-950 p-6 rounded-3xl border border-zinc-900 shadow-xl space-y-6 animate-in fade-in duration-300">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <h2 className="text-sm font-black text-white flex items-center gap-2">
-                  <ClipboardList className="w-4 h-4" color ="red" />
-                  Daftar Antrean Servis
-                </h2>
-                <div className="relative w-full sm:w-72">
-                  <input
-                    type="text"
-                    placeholder="Cari nama, plat nomor, kode..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-zinc-900 border border-zinc-800 px-4 py-2.5 rounded-xl text-xs text-white outline-none focus:border-red-600 transition"
-                  />
-                </div>
+        {/* Menu Navigasi Samping */}
+        <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-1.5 custom-scrollbar">
+          <div className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest px-4 mb-3">
+            Menu Operasional
+          </div>
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => {
+                setActiveTab(item.id);
+                setIsMobileMenuOpen(false);
+              }}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                activeTab === item.id
+                  ? "bg-red-600/10 text-red-500 border border-red-600/20 shadow-inner"
+                  : "text-zinc-400 hover:text-white hover:bg-zinc-900/50 border border-transparent"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <item.icon
+                  className={`w-4 h-4 ${activeTab === item.id ? "text-red-500" : "text-zinc-500"}`}
+                />
+                {item.label}
               </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-zinc-900/60 text-zinc-400 border-b border-zinc-800 uppercase tracking-wider">
-                      <th className="p-4">Kode & Jadwal</th>
-                      <th className="p-4">Pelanggan</th>
-                      <th className="p-4">Kendaraan</th>
-                      <th className="p-4">Layanan</th>
-                      <th className="p-4">Status Transaksi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-900">
-                    {bookings.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan="5"
-                          className="p-6 text-center text-zinc-500"
-                        >
-                          Belum ada pesanan masuk / tidak ditemukan.
-                        </td>
-                      </tr>
-                    ) : (
-                      bookings.map((b) => (
-                        <tr
-                          key={b.id}
-                          className="hover:bg-zinc-900/40 transition"
-                        >
-                          <td className="p-4">
-                            <span className="font-bold font-mono text-red-500">
-                              {b.booking_code}
-                            </span>
-                            <br />
-                            <span className="text-zinc-400">
-                              {new Date(b.booking_date).toLocaleDateString(
-                                "id-ID",
-                              )}{" "}
-                              • {b.booking_time}
-                            </span>
-                          </td>
-                          <td className="p-4 font-bold text-white">
-                            {b.customer_name} <br />
-                            <span className="text-[11px] font-mono text-zinc-400">
-                              {b.whatsapp_number}
-                            </span>
-                          </td>
-                          <td className="p-4 font-medium text-zinc-200">
-                            {b.vehicle_name} <br />
-                            <span className="text-[10px] bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800 text-zinc-400 font-mono">
-                              {b.license_plate}
-                            </span>
-                          </td>
-                          <td className="p-4 font-semibold text-zinc-300">
-                            {b.service_name}
-                          </td>
-                          <td className="p-4">
-                            <select
-                              value={b.status}
-                              onChange={(e) =>
-                                handleStatusChange(b.id, e.target.value)
-                              }
-                              className="bg-zinc-900 border border-zinc-800 p-2 rounded-lg text-xs font-bold text-white outline-none focus:border-red-600"
-                            >
-                              <option value="Menunggu">🕒 Menunggu</option>
-                              <option value="Diproses">👨‍🔧 Diproses</option>
-                              <option value="Selesai">✅ Selesai</option>
-                            </select>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* KONTEN TAB: LAYANAN */}
-          {activeTab === "layanan" && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-300">
-              <div className="bg-zinc-950 p-6 rounded-3xl border border-zinc-900 shadow-xl space-y-6 h-fit">
-                <h2 className="text-sm font-black text-white flex items-center gap-2">
-                  <PlusCircle className="w-4 h-4 text-red-500" /> Tambah Layanan
-                </h2>
-                <form onSubmit={handleAddService} className="space-y-4 text-xs">
-                  <div>
-                    <label className="block text-zinc-400 mb-1.5">
-                      Nama Layanan
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={newService.service_name}
-                      onChange={(e) =>
-                        setNewService({
-                          ...newService,
-                          service_name: e.target.value,
-                        })
-                      }
-                      className="w-full bg-zinc-900 border border-zinc-800 p-3 rounded-xl text-white outline-none focus:border-red-600"
-                      placeholder="Cth: Ganti Oli"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-zinc-400 mb-1.5">Harga</label>
-                    <input
-                      type="text"
-                      required
-                      value={newService.price}
-                      onChange={(e) =>
-                        setNewService({ ...newService, price: e.target.value })
-                      }
-                      className="w-full bg-zinc-900 border border-zinc-800 p-3 rounded-xl text-white outline-none focus:border-red-600"
-                      placeholder="Cth: Rp 50.000"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-zinc-400 mb-1.5">
-                      Deskripsi
-                    </label>
-                    <textarea
-                      rows="3"
-                      value={newService.description}
-                      onChange={(e) =>
-                        setNewService({
-                          ...newService,
-                          description: e.target.value,
-                        })
-                      }
-                      className="w-full bg-zinc-900 border border-zinc-800 p-3 rounded-xl text-white outline-none focus:border-red-600"
-                      placeholder="Rincian..."
-                    ></textarea>
-                  </div>
-                  <button
-                    type="submit"
-                    className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition"
-                  >
-                    Simpan Layanan
-                  </button>
-                </form>
-              </div>
-
-              <div className="lg:col-span-2 bg-zinc-950 p-6 rounded-3xl border border-zinc-900 shadow-xl">
-                <h2 className="text-sm font-black text-white flex items-center gap-2 mb-5">
-                  <Briefcase className="w-4 h-4 text-red-500" /> Layanan Bengkel
-                  Ini
-                </h2>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="bg-zinc-900/60 text-zinc-400 border-b border-zinc-800 uppercase tracking-wider">
-                        <th className="p-4">Layanan</th>
-                        <th className="p-4">Harga</th>
-                        <th className="p-4 text-center">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-900">
-                      {services.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan="3"
-                            className="p-6 text-center text-zinc-500"
-                          >
-                            Belum ada layanan.
-                          </td>
-                        </tr>
-                      ) : (
-                        services.map((s) => (
-                          <tr
-                            key={s.id}
-                            className="hover:bg-zinc-900/40 transition"
-                          >
-                            <td className="p-4 font-bold text-white">
-                              {s.service_name}
-                            </td>
-                            <td className="p-4 font-mono text-red-500">
-                              {s.price}
-                            </td>
-                            <td className="p-4 text-center">
-                              <button
-                                onClick={() => handleDeleteService(s.id)}
-                                className="bg-zinc-900 hover:bg-red-600 text-zinc-400 hover:text-white px-3 py-2 rounded-lg font-bold border border-zinc-800 transition inline-flex items-center gap-1"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* KONTEN TAB: JADWAL BENGKEL */}
-          {activeTab === "jadwal" && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-300">
-              <div className="bg-zinc-950 p-6 rounded-3xl border border-zinc-900 shadow-xl h-fit">
-                <h2 className="text-sm font-black flex items-center gap-2 mb-5">
-                  <PlusCircle className="w-4 h-4 text-red-500" />{" "}
-                  {isEditingSchedule ? "Edit Jadwal" : "Tambah Jadwal Hari"}
-                </h2>
-                <form
-                  onSubmit={handleSubmitSchedule}
-                  className="space-y-4 text-xs"
+              {item.badge > 0 && (
+                <span
+                  className={`text-[10px] font-black px-2 py-0.5 rounded-full ${activeTab === item.id ? "bg-red-600 text-white" : "bg-zinc-800 text-zinc-300"}`}
                 >
-                  <div>
-                    <label className="block text-zinc-400 mb-1">
-                      Pilih Hari
-                    </label>
-                    <select
-                      value={formSchedule.day_name}
-                      onChange={(e) =>
-                        setFormSchedule({
-                          ...formSchedule,
-                          day_name: e.target.value,
-                        })
-                      }
-                      className="w-full bg-zinc-900 border border-zinc-800 p-3 rounded-xl text-white outline-none focus:border-red-600"
-                    >
-                      <option value="Senin">Senin</option>
-                      <option value="Selasa">Selasa</option>
-                      <option value="Rabu">Rabu</option>
-                      <option value="Kamis">Kamis</option>
-                      <option value="Jumat">Jumat</option>
-                      <option value="Sabtu">Sabtu</option>
-                      <option value="Minggu">Minggu</option>
-                    </select>
-                  </div>
+                  {item.badge}
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
 
-                  <div className="flex items-center gap-2 py-1">
-                    <input
-                      type="checkbox"
-                      id="is_closed"
-                      checked={formSchedule.is_closed}
-                      onChange={(e) =>
-                        setFormSchedule({
-                          ...formSchedule,
-                          is_closed: e.target.checked,
-                        })
-                      }
-                      className="w-4 h-4 accent-red-600 rounded cursor-pointer"
-                    />
-                    <label
-                      htmlFor="is_closed"
-                      className="text-zinc-300 font-bold cursor-pointer"
-                    >
-                      Libur / Tutup Pada Hari Ini
-                    </label>
-                  </div>
+        {/* Bottom Logout */}
+        <div className="p-6 border-t border-zinc-900/50">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 bg-zinc-900 hover:bg-red-600 text-zinc-400 hover:text-white py-3 rounded-xl text-sm font-bold transition-all border border-zinc-800 hover:border-red-500 group"
+          >
+            <LogOut className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />{" "}
+            Tutup & Keluar
+          </button>
+        </div>
+      </aside>
 
-                  {!formSchedule.is_closed && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-zinc-400 mb-1">
-                          Jam Buka
-                        </label>
+      {/* =========================================================
+          AREA KONTEN UTAMA (KANAN)
+      ========================================================= */}
+      <section className="flex-1 flex flex-col h-screen overflow-hidden bg-[url('/workshop-bg.png')] bg-cover bg-center bg-no-repeat relative">
+        <div className="absolute inset-0 bg-black/90 backdrop-blur-sm z-0" />
+
+        {/* Header Mobile / Topbar */}
+        <header className="relative z-10 lg:hidden flex items-center justify-between p-6 border-b border-zinc-900/80 bg-zinc-950/80 backdrop-blur-md">
+          <div className="flex items-center gap-2 font-black tracking-wider text-sm">
+            <Wrench className="w-4 h-4 text-red-600" /> PANEL ADMIN
+          </div>
+          <button
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="text-zinc-400 hover:text-white"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+        </header>
+
+        <div className="relative z-10 flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar">
+          {/* STATS WIDGETS */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div className="bg-zinc-950 border border-zinc-900/80 p-5 rounded-2xl shadow-xl flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-blue-600/10 flex items-center justify-center border border-blue-600/20">
+                <ClipboardList className="w-5 h-5 text-blue-500" />
+              </div>
+              <div>
+                <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-0.5">
+                  Total Reservasi
+                </p>
+                <p className="text-2xl font-black text-white">
+                  {bookings.length}
+                </p>
+              </div>
+            </div>
+            <div className="bg-zinc-950 border border-zinc-900/80 p-5 rounded-2xl shadow-xl flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-emerald-600/10 flex items-center justify-center border border-emerald-600/20">
+                <Briefcase className="w-5 h-5 text-emerald-500" />
+              </div>
+              <div>
+                <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-0.5">
+                  Layanan Tersedia
+                </p>
+                <p className="text-2xl font-black text-white">
+                  {services.length}
+                </p>
+              </div>
+            </div>
+            <div className="bg-zinc-950 border border-zinc-900/80 p-5 rounded-2xl shadow-xl flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20">
+                <CalendarClock className="w-5 h-5 text-red-500" />
+              </div>
+              <div>
+                <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-0.5">
+                  Hari Operasional
+                </p>
+                <p className="text-2xl font-black text-white">
+                  {schedules.filter((s) => !s.is_closed).length} Hari
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* ========================================================
+              VISUALISASI GRAFIK ANALITIK (MENGGUNAKAN RECHARTS)
+          ======================================================== */}
+          <div className="bg-zinc-950/80 backdrop-blur-md p-6 rounded-3xl border border-zinc-900/80 shadow-2xl mb-8">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-sm font-black text-white flex items-center gap-2">
+                <Activity className="w-4 h-4 text-red-500" /> Analitik Status
+                Pesanan
+              </h2>
+              <span className="text-[10px] bg-red-600/10 text-red-500 px-2 py-1 rounded-md border border-red-600/20 font-bold tracking-wider">
+                LIVE DATA
+              </span>
+            </div>
+
+            <div className="w-full h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={chartData}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                >
+                  <XAxis
+                    dataKey="status"
+                    stroke="#71717a"
+                    fontSize={12}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    stroke="#71717a"
+                    fontSize={12}
+                    tickLine={false}
+                    allowDecimals={false}
+                  />
+                  <Tooltip
+                    cursor={{ fill: "rgba(255, 255, 255, 0.03)" }}
+                    contentStyle={{
+                      backgroundColor: "#09090b",
+                      borderColor: "#27272a",
+                      borderRadius: "12px",
+                      color: "#f4f4f5",
+                      fontSize: "12px",
+                      boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5)",
+                    }}
+                  />
+                  <Bar dataKey="jumlah" radius={[8, 8, 0, 0]}>
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* DYNAMIC CONTENT AREA DENGAN ANIMASI */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.3 }}
+              className="w-full"
+            >
+              {/* ========================================================
+                  KONTEN TAB: DATA BOOKING
+              ======================================================== */}
+              {activeTab === "booking" && (
+                <div className="bg-zinc-950/80 backdrop-blur-md p-6 rounded-3xl border border-zinc-900/80 shadow-2xl space-y-6">
+                  {/* BUG FIX: Hapus duplikat Header UI di sini */}
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                      <h2 className="text-lg font-black text-white flex items-center gap-2">
+                        <Activity className="w-5 h-5 text-red-500" /> Daftar
+                        Antrean Kendaraan
+                      </h2>
+                      <p className="text-xs text-zinc-400 mt-1">
+                        Ubah status pekerjaan dari dropdown untuk mengabari
+                        pelanggan via WhatsApp otomatis.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                      <button
+                        onClick={handleExportPDF}
+                        className="w-full sm:w-auto bg-emerald-600/10 hover:bg-emerald-600 text-emerald-500 hover:text-white border border-emerald-500/30 px-4 py-3 rounded-xl font-bold transition flex items-center justify-center gap-2 text-sm shadow-sm"
+                      >
+                        <ClipboardList className="w-4 h-4" /> Cetak PDF
+                      </button>
+
+                      <div className="relative w-full sm:w-64 group">
+                        <Search className="absolute left-3.5 top-3.5 w-4 h-4 text-zinc-500 group-focus-within:text-red-500 transition-colors" />
                         <input
-                          type="time"
-                          required={!formSchedule.is_closed}
-                          value={formSchedule.open_time}
-                          onChange={(e) =>
-                            setFormSchedule({
-                              ...formSchedule,
-                              open_time: e.target.value,
-                            })
-                          }
-                          className="w-full bg-zinc-900 border border-zinc-800 p-3 rounded-xl text-white outline-none focus:border-red-600 font-mono"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-zinc-400 mb-1">
-                          Jam Tutup
-                        </label>
-                        <input
-                          type="time"
-                          required={!formSchedule.is_closed}
-                          value={formSchedule.close_time}
-                          onChange={(e) =>
-                            setFormSchedule({
-                              ...formSchedule,
-                              close_time: e.target.value,
-                            })
-                          }
-                          className="w-full bg-zinc-900 border border-zinc-800 p-3 rounded-xl text-white outline-none focus:border-red-600 font-mono"
+                          type="text"
+                          placeholder="Cari pesanan..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="w-full bg-zinc-900/50 border border-zinc-800 pl-10 pr-4 py-3 rounded-xl text-sm text-white outline-none focus:border-red-600 focus:bg-zinc-900 transition-all shadow-inner"
                         />
                       </div>
                     </div>
-                  )}
-
-                  <div className="flex gap-2 pt-2">
-                    <button
-                      type="submit"
-                      className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl transition"
-                    >
-                      {isEditingSchedule ? "Update Jadwal" : "Simpan Jadwal"}
-                    </button>
-                    {isEditingSchedule && (
-                      <button
-                        type="button"
-                        onClick={handleResetFormSchedule}
-                        className="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-3.5 rounded-xl transition"
-                      >
-                        Batal
-                      </button>
-                    )}
                   </div>
-                </form>
-              </div>
 
-              <div className="lg:col-span-2 bg-zinc-950 p-6 rounded-3xl border border-zinc-900 shadow-xl">
-                <h2 className="text-sm font-black flex items-center gap-2 mb-5">
-                  <CalendarClock className="w-4 h-4 text-red-500" /> Jadwal
-                  Operasional Aktif
-                </h2>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="bg-zinc-900/50 text-zinc-400 border-b border-zinc-800 uppercase tracking-wider">
-                        <th className="p-4">Hari</th>
-                        <th className="p-4">Jam Operasional</th>
-                        <th className="p-4">Status</th>
-                        <th className="p-4 text-center">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-900">
-                      {schedules.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan="4"
-                            className="p-6 text-center text-zinc-500 font-medium"
-                          >
-                            Belum ada jadwal operasional yang diatur.
-                          </td>
+                  <div className="overflow-x-auto rounded-2xl border border-zinc-800/50">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-zinc-900/80 text-zinc-400 border-b border-zinc-800 uppercase tracking-wider">
+                          <th className="p-4 font-bold">Kode & Jadwal</th>
+                          <th className="p-4 font-bold">Pelanggan</th>
+                          <th className="p-4 font-bold">Kendaraan</th>
+                          <th className="p-4 font-bold">Layanan</th>
+                          <th className="p-4 text-center font-bold">
+                            Status Transaksi
+                          </th>
                         </tr>
-                      ) : (
-                        schedules.map((item) => (
-                          <tr key={item.id} className="hover:bg-zinc-900/30">
-                            <td className="p-4 font-bold text-white">
-                              {item.day_name}
-                            </td>
-                            <td className="p-4 font-mono text-zinc-300">
-                              {item.is_closed
-                                ? "-"
-                                : `${item.open_time.substring(0, 5)} - ${item.close_time.substring(0, 5)}`}
-                            </td>
-                            <td className="p-4">
-                              {item.is_closed ? (
-                                <span className="bg-red-600/10 text-red-500 border border-red-600/20 px-2 py-1 rounded text-[10px] font-bold">
-                                  LIBUR
-                                </span>
-                              ) : (
-                                <span className="bg-emerald-600/10 text-emerald-500 border border-emerald-600/20 px-2 py-1 rounded text-[10px] font-bold">
-                                  BUKA
-                                </span>
-                              )}
-                            </td>
-                            <td className="p-4 text-center flex justify-center gap-2">
-                              <button
-                                onClick={() => handleEditSchedule(item)}
-                                className="bg-zinc-400 hover:bg-blue-600 px-3 py-2 rounded-lg transition"
-                              >
-                                <Edit className="w-3 h-3" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteSchedule(item.id)}
-                                className="bg-zinc-400 hover:bg-red-600 px-3 py-2 rounded-lg transition"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-900/50">
+                        {filteredBookings.length === 0 ? (
+                          <tr>
+                            <td
+                              colSpan="5"
+                              className="p-10 text-center text-zinc-500 font-medium"
+                            >
+                              Belum ada pesanan masuk / tidak ditemukan.
                             </td>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                        ) : (
+                          filteredBookings.map((b) => (
+                            <tr
+                              key={b.id}
+                              className="hover:bg-zinc-900/40 transition"
+                            >
+                              <td className="p-4">
+                                <span className="font-bold font-mono text-red-500 text-sm">
+                                  {b.booking_code}
+                                </span>
+                                <br />
+                                <span className="text-zinc-400">
+                                  {new Date(b.booking_date).toLocaleDateString(
+                                    "id-ID",
+                                  )}{" "}
+                                  • {b.booking_time}
+                                </span>
+                              </td>
+                              <td className="p-4 font-bold text-white">
+                                {b.customer_name} <br />
+                                <span className="text-[11px] font-mono text-zinc-500">
+                                  {b.whatsapp_number}
+                                </span>
+                              </td>
+                              <td className="p-4 font-medium text-zinc-200">
+                                {b.vehicle_name} <br />
+                                <span className="text-[10px] bg-black px-2 py-0.5 rounded border border-zinc-700 text-zinc-400 font-mono tracking-wider">
+                                  {b.license_plate}
+                                </span>
+                              </td>
+                              <td className="p-4 font-bold text-zinc-300">
+                                {b.service_name}
+                              </td>
+                              <td className="p-4">
+                                <select
+                                  value={b.status}
+                                  onChange={(e) =>
+                                    handleStatusChange(b.id, e.target.value)
+                                  }
+                                  className={`w-full bg-black border border-zinc-800 px-3 py-2 rounded-xl text-xs font-bold outline-none cursor-pointer focus:border-zinc-500 appearance-none text-center ${b.status === "Selesai" ? "text-emerald-500 bg-emerald-500/5" : b.status === "Batal" ? "text-red-500 bg-red-500/5" : "text-yellow-500 bg-yellow-500/5"}`}
+                                >
+                                  <option value="Menunggu">🕒 Menunggu</option>
+                                  <option value="Diproses">⚙️ Diproses</option>
+                                  <option value="Selesai">✅ Selesai</option>
+                                  <option value="Batal">❌ Batal</option>
+                                </select>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
+              )}
+
+              {/* ========================================================
+                  KONTEN TAB: LAYANAN
+              ======================================================== */}
+              {activeTab === "layanan" && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="bg-zinc-950/80 backdrop-blur-md p-6 rounded-3xl border border-zinc-900/80 shadow-2xl h-fit">
+                    <h2 className="text-base font-black text-white flex items-center gap-2 mb-5">
+                      <PlusCircle className="w-5 h-5 text-red-500" /> Tambah
+                      Layanan
+                    </h2>
+                    <form
+                      onSubmit={handleAddService}
+                      className="space-y-4 text-xs"
+                    >
+                      <div>
+                        <label className="block text-zinc-400 font-bold mb-1.5 uppercase tracking-wider text-[10px]">
+                          Nama Layanan
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={newService.service_name}
+                          onChange={(e) =>
+                            setNewService({
+                              ...newService,
+                              service_name: e.target.value,
+                            })
+                          }
+                          className="w-full bg-zinc-900/50 border border-zinc-800 p-3.5 rounded-xl text-sm text-white outline-none focus:border-red-600 focus:bg-zinc-900 transition-all shadow-inner"
+                          placeholder="Cth: Ganti Oli Mesin"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-400 font-bold mb-1.5 uppercase tracking-wider text-[10px]">
+                          Harga / Biaya
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={newService.price}
+                          onChange={(e) =>
+                            setNewService({
+                              ...newService,
+                              price: e.target.value,
+                            })
+                          }
+                          className="w-full bg-zinc-900/50 border border-zinc-800 p-3.5 rounded-xl text-sm text-white outline-none focus:border-red-600 focus:bg-zinc-900 transition-all shadow-inner"
+                          placeholder="Cth: Rp 50.000"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-400 font-bold mb-1.5 uppercase tracking-wider text-[10px]">
+                          Deskripsi Pekerjaan
+                        </label>
+                        <textarea
+                          rows="3"
+                          value={newService.description}
+                          onChange={(e) =>
+                            setNewService({
+                              ...newService,
+                              description: e.target.value,
+                            })
+                          }
+                          className="w-full bg-zinc-900/50 border border-zinc-800 p-3.5 rounded-xl text-sm text-white outline-none focus:border-red-600 focus:bg-zinc-900 transition-all shadow-inner"
+                          placeholder="Rincian layanan..."
+                        ></textarea>
+                      </div>
+                      <button
+                        type="submit"
+                        className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-red-900/20 active:scale-[0.98] transition text-sm"
+                      >
+                        Simpan Layanan Baru
+                      </button>
+                    </form>
+                  </div>
+
+                  <div className="lg:col-span-2 bg-zinc-950/80 backdrop-blur-md p-6 rounded-3xl border border-zinc-900/80 shadow-2xl">
+                    <h2 className="text-base font-black text-white mb-5 flex items-center gap-2">
+                      <Briefcase className="w-5 h-5 text-red-500" /> Katalog
+                      Layanan Bengkel
+                    </h2>
+                    <div className="overflow-x-auto rounded-2xl border border-zinc-800/50">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-zinc-900/80 text-zinc-400 border-b border-zinc-800 uppercase tracking-wider">
+                            <th className="p-4 font-bold">Nama Layanan</th>
+                            <th className="p-4 font-bold">Harga</th>
+                            <th className="p-4 text-center font-bold">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-900/50">
+                          {services.length === 0 ? (
+                            <tr>
+                              <td
+                                colSpan="3"
+                                className="p-10 text-center text-zinc-500 font-medium"
+                              >
+                                Belum ada layanan terdaftar.
+                              </td>
+                            </tr>
+                          ) : (
+                            services.map((s) => (
+                              <tr
+                                key={s.id}
+                                className="hover:bg-zinc-900/40 transition"
+                              >
+                                <td className="p-4">
+                                  <span className="font-bold text-white text-sm">
+                                    {s.service_name}
+                                  </span>
+                                  <br />
+                                  <span className="text-zinc-500 text-xs truncate max-w-[200px] inline-block">
+                                    {s.description || "Tidak ada deskripsi"}
+                                  </span>
+                                </td>
+                                <td className="p-4 font-mono font-bold text-red-500">
+                                  {s.price}
+                                </td>
+                                <td className="p-4 text-center">
+                                  <button
+                                    onClick={() => handleDeleteService(s.id)}
+                                    className="text-zinc-500 hover:text-white bg-zinc-900 hover:bg-red-600 p-2.5 rounded-lg transition shadow-sm mx-auto"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ========================================================
+                  KONTEN TAB: JADWAL BENGKEL
+              ======================================================== */}
+              {activeTab === "jadwal" && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="bg-zinc-950/80 backdrop-blur-md p-6 rounded-3xl border border-zinc-900/80 shadow-2xl h-fit">
+                    <h2 className="text-base font-black text-white flex items-center gap-2 mb-5">
+                      <Clock className="w-5 h-5 text-red-500" />{" "}
+                      {isEditingSchedule
+                        ? "Edit Waktu Buka"
+                        : "Tambah Waktu Buka"}
+                    </h2>
+                    <form
+                      onSubmit={handleSubmitSchedule}
+                      className="space-y-4 text-xs"
+                    >
+                      <div>
+                        <label className="block text-zinc-400 font-bold mb-1.5 uppercase tracking-wider text-[10px]">
+                          Pilih Hari
+                        </label>
+                        <select
+                          value={formSchedule.day_name}
+                          onChange={(e) =>
+                            setFormSchedule({
+                              ...formSchedule,
+                              day_name: e.target.value,
+                            })
+                          }
+                          className="w-full bg-zinc-900/50 border border-zinc-800 p-3.5 rounded-xl text-sm text-white outline-none focus:border-red-600 focus:bg-zinc-900 transition-all appearance-none cursor-pointer"
+                        >
+                          <option value="Senin">Senin</option>
+                          <option value="Selasa">Selasa</option>
+                          <option value="Rabu">Rabu</option>
+                          <option value="Kamis">Kamis</option>
+                          <option value="Jumat">Jumat</option>
+                          <option value="Sabtu">Sabtu</option>
+                          <option value="Minggu">Minggu</option>
+                        </select>
+                      </div>
+
+                      <div className="flex items-center gap-3 py-2 px-1">
+                        <input
+                          type="checkbox"
+                          id="is_closed"
+                          checked={formSchedule.is_closed}
+                          onChange={(e) =>
+                            setFormSchedule({
+                              ...formSchedule,
+                              is_closed: e.target.checked,
+                            })
+                          }
+                          className="w-5 h-5 accent-red-600 rounded cursor-pointer"
+                        />
+                        <label
+                          htmlFor="is_closed"
+                          className="text-zinc-300 font-bold cursor-pointer text-sm"
+                        >
+                          Libur / Tutup Pada Hari Ini
+                        </label>
+                      </div>
+
+                      {!formSchedule.is_closed && (
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-zinc-400 font-bold mb-1.5 uppercase tracking-wider text-[10px]">
+                              Jam Buka
+                            </label>
+                            <input
+                              type="time"
+                              required={!formSchedule.is_closed}
+                              value={formSchedule.open_time}
+                              onChange={(e) =>
+                                setFormSchedule({
+                                  ...formSchedule,
+                                  open_time: e.target.value,
+                                })
+                              }
+                              className="w-full bg-zinc-900/50 border border-zinc-800 p-3.5 rounded-xl text-sm text-white outline-none focus:border-red-600 focus:bg-zinc-900 transition-all font-mono"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-400 font-bold mb-1.5 uppercase tracking-wider text-[10px]">
+                              Jam Tutup
+                            </label>
+                            <input
+                              type="time"
+                              required={!formSchedule.is_closed}
+                              value={formSchedule.close_time}
+                              onChange={(e) =>
+                                setFormSchedule({
+                                  ...formSchedule,
+                                  close_time: e.target.value,
+                                })
+                              }
+                              className="w-full bg-zinc-900/50 border border-zinc-800 p-3.5 rounded-xl text-sm text-white outline-none focus:border-red-600 focus:bg-zinc-900 transition-all font-mono"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex gap-3 pt-2">
+                        <button
+                          type="submit"
+                          className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl shadow-lg active:scale-[0.98] transition text-sm"
+                        >
+                          {isEditingSchedule ? "Update" : "Simpan"}
+                        </button>
+                        {isEditingSchedule && (
+                          <button
+                            type="button"
+                            onClick={handleResetFormSchedule}
+                            className="w-24 bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-4 rounded-xl transition text-sm"
+                          >
+                            Batal
+                          </button>
+                        )}
+                      </div>
+                    </form>
+                  </div>
+
+                  <div className="lg:col-span-2 bg-zinc-950/80 backdrop-blur-md p-6 rounded-3xl border border-zinc-900/80 shadow-2xl">
+                    <h2 className="text-base font-black text-white mb-5 flex items-center gap-2">
+                      <CalendarClock className="w-5 h-5 text-red-500" /> Jadwal
+                      Operasional Aktif
+                    </h2>
+                    <div className="overflow-x-auto rounded-2xl border border-zinc-800/50">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-zinc-900/80 text-zinc-400 border-b border-zinc-800 uppercase tracking-wider">
+                            <th className="p-4 font-bold">Hari</th>
+                            <th className="p-4 font-bold">Jam Operasional</th>
+                            <th className="p-4 font-bold">Status</th>
+                            <th className="p-4 text-center font-bold">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-900/50">
+                          {schedules.length === 0 ? (
+                            <tr>
+                              <td
+                                colSpan="4"
+                                className="p-10 text-center text-zinc-500 font-medium"
+                              >
+                                Belum ada jadwal operasional yang diatur.
+                              </td>
+                            </tr>
+                          ) : (
+                            schedules.map((item) => (
+                              <tr
+                                key={item.id}
+                                className="hover:bg-zinc-900/40 transition"
+                              >
+                                <td className="p-4 font-bold text-white text-sm">
+                                  {item.day_name}
+                                </td>
+                                <td className="p-4 font-mono text-zinc-300">
+                                  {item.is_closed
+                                    ? "-"
+                                    : `${item.open_time.substring(0, 5)} - ${item.close_time.substring(0, 5)}`}
+                                </td>
+                                <td className="p-4">
+                                  {item.is_closed ? (
+                                    <span className="bg-red-600/10 text-red-500 border border-red-600/20 px-3 py-1.5 rounded-lg text-[11px] font-bold">
+                                      TUTUP / LIBUR
+                                    </span>
+                                  ) : (
+                                    <span className="bg-emerald-600/10 text-emerald-500 border border-emerald-600/20 px-3 py-1.5 rounded-lg text-[11px] font-bold">
+                                      BUKA
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="p-4 text-center">
+                                  <div className="flex justify-center gap-2">
+                                    <button
+                                      onClick={() => handleEditSchedule(item)}
+                                      className="text-zinc-400 hover:text-white bg-zinc-800 hover:bg-blue-600 p-2.5 rounded-lg transition shadow-sm"
+                                    >
+                                      <Edit className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        handleDeleteSchedule(item.id)
+                                      }
+                                      className="text-zinc-400 hover:text-white bg-zinc-800 hover:bg-red-600 p-2.5 rounded-lg transition shadow-sm"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
-      </div>
+      </section>
     </main>
   );
 }

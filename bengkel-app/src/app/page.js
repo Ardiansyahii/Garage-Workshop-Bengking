@@ -32,7 +32,6 @@ export default function LandingPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setIsLoading(true);
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/bengkels`)
       .then((res) => res.json())
       .then((data) => {
@@ -55,9 +54,8 @@ export default function LandingPage() {
       const parsed = JSON.parse(session);
       // Arahkan ke dashboard masing-masing sesuai role
       if (parsed.role === "superadmin") window.location.href = "/superadmin";
-      else if (parsed.role === "admin_bengkel")
-        window.location.href = "/admin-bengkel";
-      else window.location.href = "/booking";
+      else if (parsed.role === "admin_bengkel") window.location.href = "/admin";
+      else window.location.href = "/dashboard";
     } else {
       Swal.fire({
         icon: "warning",
@@ -172,7 +170,8 @@ export default function LandingPage() {
             variants={fadeUp}
             className="text-zinc-300 text-sm sm:text-base max-w-xl mx-auto leading-relaxed"
           >
-            Booking servis kendaraan tanpa antre, bandingkan harga bengkel, dan pantau progres pengerjaan secara real-time.
+            Booking servis kendaraan tanpa antre, bandingkan harga bengkel, dan
+            pantau progres pengerjaan secara real-time.
           </motion.p>
 
           <motion.div

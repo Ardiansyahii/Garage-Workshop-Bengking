@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
+import { fetchWithAuth } from "@/utils/api";
 import {
   LogOut,
   Store,
@@ -92,7 +93,11 @@ export default function SuperadminDashboard() {
   }, []);
 
   const handleLogout = () => {
+    localStorage.removeItem("user");
     localStorage.removeItem("user_session");
+    localStorage.removeItem("auth_token");
+    document.cookie =
+      "user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     window.location.href = "/login";
   };
 
@@ -100,19 +105,16 @@ export default function SuperadminDashboard() {
   // FUNGSI CRUD (TETAP SAMA 100%)
   // ==========================================
   const fetchBengkels = async () => {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/bengkels`);
-    const data = await res.json();
-    if (data.success) setBengkels(data.data || []);
+    const data = await fetchWithAuth(`/api/bengkels`);
+    if (data?.success) setBengkels(data.data || []);
   };
 
   const handleAddBengkel = async (e) => {
     e.preventDefault();
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/bengkels`, {
+    const data = await fetchWithAuth(`/api/bengkels`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newBengkel),
     });
-    const data = await res.json();
     if (data.success) {
       Swal.fire({
         icon: "success",
@@ -137,21 +139,16 @@ export default function SuperadminDashboard() {
       color: "#f4f4f5",
     });
     if (confirm.isConfirmed) {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/bengkels/${id}`,
-        { method: "DELETE" },
-      );
-      const data = await res.json();
-      if (data.success) fetchBengkels();
+      const data = await fetchWithAuth(`/api/bengkels/${id}`, {
+        method: "DELETE",
+      });
+      if (data?.success) fetchBengkels();
     }
   };
 
   const handleViewSchedule = async (bengkelId, bengkelName) => {
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/schedules/${bengkelId}`,
-      );
-      const data = await res.json();
+      const data = await fetchWithAuth(`/api/schedules/${bengkelId}`);
       let htmlContent = '<div style="text-align: left; margin-top: 10px;">';
       if (!data.success || data.data.length === 0) {
         htmlContent +=
@@ -189,19 +186,16 @@ export default function SuperadminDashboard() {
   };
 
   const fetchCustomers = async () => {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users`);
-    const data = await res.json();
-    if (data.success) setCustomers(data.data || []);
+    const data = await fetchWithAuth(`/api/users`);
+    if (data?.success) setCustomers(data.data || []);
   };
 
   const handleAddCustomer = async (e) => {
     e.preventDefault();
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users`, {
+    const data = await fetchWithAuth(`/api/users`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newCustomer),
     });
-    const data = await res.json();
     if (data.success) {
       Swal.fire({
         icon: "success",
@@ -226,19 +220,16 @@ export default function SuperadminDashboard() {
       color: "#f4f4f5",
     });
     if (confirm.isConfirmed) {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/users/${id}`,
-        { method: "DELETE" },
-      );
-      const data = await res.json();
-      if (data.success) fetchCustomers();
+      const data = await fetchWithAuth(`/api/users/${id}`, {
+        method: "DELETE",
+      });
+      if (data?.success) fetchCustomers();
     }
   };
 
   const fetchVehicles = async () => {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/vehicles`);
-    const data = await res.json();
-    if (data.success) setVehicles(data.data || []);
+    const data = await fetchWithAuth(`/api/vehicles`);
+    if (data?.success) setVehicles(data.data || []);
   };
 
   const handleDeleteVehicle = async (id) => {
@@ -251,35 +242,28 @@ export default function SuperadminDashboard() {
       color: "#f4f4f5",
     });
     if (confirm.isConfirmed) {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/vehicles/${id}`,
-        { method: "DELETE" },
-      );
-      const data = await res.json();
-      if (data.success) fetchVehicles();
+      const data = await fetchWithAuth(`/api/vehicles/${id}`, {
+        method: "DELETE",
+      });
+      if (data?.success) fetchVehicles();
     }
   };
 
   const fetchAdminBengkels = async () => {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/admin-bengkel`,
-    );
-    const data = await res.json();
-    if (data.success) setAdminBengkels(data.data || []);
+    const data = await fetchWithAuth(`/api/admin-bengkel`);
+    if (data?.success) setAdminBengkels(data.data || []);
   };
 
   const handleSubmitAdmin = async (e) => {
     e.preventDefault();
     const url = isEditingAdmin
-      ? `${process.env.NEXT_PUBLIC_API_URL}/api/admin-bengkel/${formAdmin.id}`
-      : `${process.env.NEXT_PUBLIC_API_URL}/api/admin-bengkel`;
+      ? `/api/admin-bengkel/${formAdmin.id}`
+      : `/api/admin-bengkel`;
     const method = isEditingAdmin ? "PUT" : "POST";
-    const res = await fetch(url, {
+    const data = await fetchWithAuth(url, {
       method,
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(formAdmin),
     });
-    const data = await res.json();
     if (data.success) {
       Swal.fire({
         icon: "success",
@@ -336,34 +320,24 @@ export default function SuperadminDashboard() {
       color: "#f4f4f5",
     });
     if (confirm.isConfirmed) {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/admin-bengkel/${id}`,
-        { method: "DELETE" },
-      );
-      const data = await res.json();
-      if (data.success) fetchAdminBengkels();
+      const data = await fetchWithAuth(`/api/admin-bengkel/${id}`, {
+        method: "DELETE",
+      });
+      if (data?.success) fetchAdminBengkels();
     }
   };
 
   const fetchBookings = async () => {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/superadmin-bookings`,
-    );
-    const data = await res.json();
-    if (data.success) setBookings(data.data || []);
+    const data = await fetchWithAuth(`/api/superadmin-bookings`);
+    if (data?.success) setBookings(data.data || []);
   };
 
   const handleUpdateStatusBooking = async (id, newStatus) => {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/superadmin-bookings/${id}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      },
-    );
-    const data = await res.json();
-    if (data.success) fetchBookings();
+    const data = await fetchWithAuth(`/api/superadmin-bookings/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ status: newStatus }),
+    });
+    if (data?.success) fetchBookings();
   };
 
   const handleDeleteBooking = async (id) => {
@@ -376,22 +350,17 @@ export default function SuperadminDashboard() {
       color: "#f4f4f5",
     });
     if (confirm.isConfirmed) {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/superadmin-bookings/${id}`,
-        { method: "DELETE" },
-      );
-      const data = await res.json();
-      if (data.success) fetchBookings();
+      const data = await fetchWithAuth(`/api/superadmin-bookings/${id}`, {
+        method: "DELETE",
+      });
+      if (data?.success) fetchBookings();
     }
   };
 
   const fetchMitraRequests = async () => {
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/register-mitra/requests`,
-      );
-      const data = await res.json();
-      if (data.success) setMitraRequests(data.data || []);
+      const data = await fetchWithAuth(`/api/register-mitra/requests`);
+      if (data?.success) setMitraRequests(data.data || []);
     } catch (error) {
       console.error("Gagal memuat request mitra", error);
     }
@@ -415,11 +384,9 @@ export default function SuperadminDashboard() {
         color: "#f4f4f5",
         didOpen: () => Swal.showLoading(),
       });
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/register-mitra/approve/${id}`,
-        { method: "POST" },
-      );
-      const data = await res.json();
+      const data = await fetchWithAuth(`/api/register-mitra/approve/${id}`, {
+        method: "POST",
+      });
       if (data.success) {
         Swal.fire({
           icon: "success",
@@ -457,11 +424,9 @@ export default function SuperadminDashboard() {
       color: "#f4f4f5",
     });
     if (confirm.isConfirmed) {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/register-mitra/reject/${id}`,
-        { method: "POST" },
-      );
-      const data = await res.json();
+      const data = await fetchWithAuth(`/api/register-mitra/reject/${id}`, {
+        method: "POST",
+      });
       if (data.success) fetchMitraRequests();
     }
   };
@@ -493,7 +458,6 @@ export default function SuperadminDashboard() {
 
   return (
     <main className="min-h-screen bg-black text-white font-sans flex overflow-hidden selection:bg-red-600">
-
       {/* =========================================================
           SIDEBAR KIRI (DESKTOP & MOBILE)
       ========================================================= */}
