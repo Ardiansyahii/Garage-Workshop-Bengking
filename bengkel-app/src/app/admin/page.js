@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
 import { fetchWithAuth } from "@/utils/api";
@@ -19,6 +19,7 @@ import {
   Store,
   Activity,
   Clock,
+  UserRound,
 } from "lucide-react";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
@@ -34,6 +35,35 @@ import {
 
 export default function AdminBengkelDashboard() {
   const [user, setUser] = useState(null);
+  const [hasMounted, setHasMounted] = useState(false);
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      const session = localStorage.getItem("user_session");
+      if (!session) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const parsedUser = JSON.parse(session);
+      if (parsedUser.role !== "admin_bengkel" || !parsedUser.bengkel_id) {
+        window.location.href = "/login";
+        return;
+      }
+
+      setUser(parsedUser);
+    } catch (error) {
+      window.location.href = "/login";
+      return;
+    } finally {
+      setHasMounted(true);
+    }
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
   const [activeTab, setActiveTab] = useState("booking");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -45,6 +75,16 @@ export default function AdminBengkelDashboard() {
     description: "",
   });
   const [searchQuery, setSearchQuery] = useState("");
+  const [profileAdmin, setProfileAdmin] = useState({
+    name: "",
+    whatsapp: "",
+    password: "",
+  });
+  const [profileBengkel, setProfileBengkel] = useState({
+    name: "",
+    address: "",
+    phone: "",
+  });
 
   // Filter Pencarian
   const filteredBookings = bookings.filter((bk) => {
@@ -82,28 +122,6 @@ export default function AdminBengkelDashboard() {
   });
   const [isEditingSchedule, setIsEditingSchedule] = useState(false);
 
-  useEffect(() => {
-    const session = localStorage.getItem("user_session");
-    if (!session) {
-      window.location.href = "/login";
-      return;
-    }
-    const parsedUser = JSON.parse(session);
-    if (parsedUser.role !== "admin_bengkel" || !parsedUser.bengkel_id) {
-      window.location.href = "/login";
-      return;
-    }
-    setUser(parsedUser);
-  }, []);
-
-  useEffect(() => {
-    if (user) {
-      fetchServices();
-      fetchBookings();
-      fetchSchedules(user.bengkel_id);
-    }
-  }, [user, searchQuery]);
-
   const handleLogout = () => {
     localStorage.removeItem("user");
     localStorage.removeItem("user_session");
@@ -116,12 +134,13 @@ export default function AdminBengkelDashboard() {
   // ==========================================
   // FITUR: CRUD LAYANAN (SERVICES)
   // ==========================================
-  const fetchServices = async () => {
+  const fetchServices = useCallback(async () => {
+    if (!user) return;
     const data = await fetchWithAuth(
       `/api/services?bengkel_id=${user.bengkel_id}`,
     );
     if (data?.success) setServices(data.data || []);
-  };
+  }, [user]);
 
   const handleAddService = async (e) => {
     e.preventDefault();
@@ -163,12 +182,13 @@ export default function AdminBengkelDashboard() {
   // ==========================================
   // FITUR: CRUD & PENCARIAN BOOKING
   // ==========================================
-  const fetchBookings = async () => {
+  const fetchBookings = useCallback(async () => {
+    if (!user) return;
     const data = await fetchWithAuth(
       `/api/bookings?bengkel_id=${user.bengkel_id}&search=${searchQuery}`,
     );
     if (data?.success) setBookings(data.data || []);
-  };
+  }, [searchQuery, user]);
 
   const handleStatusChange = async (id, newStatus) => {
     const data = await fetchWithAuth(`/api/bookings/${id}/status`, {
@@ -268,10 +288,115 @@ export default function AdminBengkelDashboard() {
   // ==========================================
   // FITUR: CRUD JADWAL OPERASIONAL
   // ==========================================
-  const fetchSchedules = async (bengkelId) => {
+  const fetchSchedules = useCallback(async (bengkelId) => {
     const data = await fetchWithAuth(`/api/schedules/${bengkelId}`);
     if (data?.success) setSchedules(data.data || []);
+  }, []);
+
+  const fetchProfileData = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const { data } = await fetchWithAuth("/api/profile");
+      if (data?.success) {
+        setProfileAdmin({ ...data.data.admin, password: "" });
+        if (data.data.bengkel) {
+          setProfileBengkel(data.data.bengkel);
+        }
+      }
+    } catch (error) {
+      console.error("Gagal memuat profil admin:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Gagal memuat profil",
+        text: "Data profil tidak dapat diambil saat ini.",
+        background: "#09090b",
+        color: "#f4f4f5",
+        confirmButtonColor: "#dc2626",
+      });
+    }
+  }, [user]);
+
+  const handleUpdateAdmin = async (e) => {
+    e.preventDefault();
+
+    try {
+      const { data } = await fetchWithAuth("/api/profile/admin", {
+        method: "PUT",
+        body: JSON.stringify(profileAdmin),
+      });
+
+      if (data?.success) {
+        Swal.fire({
+          icon: "success",
+          title: "Berhasil",
+          text: data.message,
+          background: "#09090b",
+          color: "#f4f4f5",
+          confirmButtonColor: "#dc2626",
+        });
+        setProfileAdmin({ ...profileAdmin, password: "" });
+      }
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Gagal memperbarui profil",
+        text: error.message || "Terjadi kesalahan.",
+        background: "#09090b",
+        color: "#f4f4f5",
+        confirmButtonColor: "#dc2626",
+      });
+    }
   };
+
+  const handleUpdateBengkel = async (e) => {
+    e.preventDefault();
+
+    try {
+      const { data } = await fetchWithAuth("/api/profile/bengkel", {
+        method: "PUT",
+        body: JSON.stringify(profileBengkel),
+      });
+
+      if (data?.success) {
+        Swal.fire({
+          icon: "success",
+          title: "Berhasil",
+          text: data.message,
+          background: "#09090b",
+          color: "#f4f4f5",
+          confirmButtonColor: "#dc2626",
+        });
+      }
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Gagal memperbarui bengkel",
+        text: error.message || "Terjadi kesalahan.",
+        background: "#09090b",
+        color: "#f4f4f5",
+        confirmButtonColor: "#dc2626",
+      });
+    }
+  };
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (user) {
+      fetchProfileData();
+      fetchServices();
+      fetchBookings();
+      fetchSchedules(user.bengkel_id);
+    }
+  }, [
+    user,
+    searchQuery,
+    fetchProfileData,
+    fetchServices,
+    fetchBookings,
+    fetchSchedules,
+  ]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleSubmitSchedule = async (e) => {
     e.preventDefault();
@@ -355,9 +480,11 @@ export default function AdminBengkelDashboard() {
     },
     { id: "layanan", label: "Kelola Layanan", icon: Briefcase },
     { id: "jadwal", label: "Jadwal Operasional", icon: CalendarClock },
+    { id: "profile-admin", label: "Profile Admin", icon: UserRound },
+    { id: "profile-bengkel", label: "Profil Bengkel", icon: Store },
   ];
 
-  if (!user)
+  if (!hasMounted || !user)
     return (
       <div className="min-h-screen bg-black flex items-center justify-center text-zinc-500 font-bold">
         <div className="animate-pulse flex items-center gap-2">
@@ -418,34 +545,38 @@ export default function AdminBengkelDashboard() {
           <div className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest px-4 mb-3">
             Menu Operasional
           </div>
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => {
-                setActiveTab(item.id);
-                setIsMobileMenuOpen(false);
-              }}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                activeTab === item.id
-                  ? "bg-red-600/10 text-red-500 border border-red-600/20 shadow-inner"
-                  : "text-zinc-400 hover:text-white hover:bg-zinc-900/50 border border-transparent"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <item.icon
-                  className={`w-4 h-4 ${activeTab === item.id ? "text-red-500" : "text-zinc-500"}`}
-                />
-                {item.label}
-              </div>
-              {item.badge > 0 && (
-                <span
-                  className={`text-[10px] font-black px-2 py-0.5 rounded-full ${activeTab === item.id ? "bg-red-600 text-white" : "bg-zinc-800 text-zinc-300"}`}
-                >
-                  {item.badge}
-                </span>
-              )}
-            </button>
-          ))}
+          {navItems.map((item) => {
+            const isCurrent = activeTab === item.id;
+
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                  isCurrent
+                    ? "bg-red-600/10 text-red-500 border border-red-600/20 shadow-inner"
+                    : "text-zinc-400 hover:text-white hover:bg-zinc-900/50 border border-transparent"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <item.icon
+                    className={`w-4 h-4 ${isCurrent ? "text-red-500" : "text-zinc-500"}`}
+                  />
+                  {item.label}
+                </div>
+                {item.badge > 0 && (
+                  <span
+                    className={`text-[10px] font-black px-2 py-0.5 rounded-full ${isCurrent ? "bg-red-600 text-white" : "bg-zinc-800 text-zinc-300"}`}
+                  >
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </nav>
 
         {/* Bottom Logout */}
@@ -1035,6 +1166,168 @@ export default function AdminBengkelDashboard() {
                       </table>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {activeTab === "profile-admin" && (
+                <div className="bg-zinc-950/80 backdrop-blur-md p-6 rounded-3xl border border-zinc-900/80 shadow-2xl max-w-3xl mx-auto">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-12 h-12 rounded-xl bg-red-600/10 border border-red-600/20 flex items-center justify-center">
+                      <UserRound className="w-5 h-5 text-red-500" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-bold">
+                        Pengaturan Akun
+                      </p>
+                      <h2 className="text-xl font-black text-white">
+                        Profile Admin
+                      </h2>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleUpdateAdmin} className="space-y-5">
+                    <div>
+                      <label className="block text-xs uppercase tracking-wider text-zinc-400 font-bold mb-2">
+                        Nama Lengkap
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={profileAdmin.name}
+                        onChange={(e) =>
+                          setProfileAdmin({
+                            ...profileAdmin,
+                            name: e.target.value,
+                          })
+                        }
+                        className="w-full bg-zinc-900/50 border border-zinc-800 p-3.5 rounded-xl text-sm text-white outline-none focus:border-red-600 focus:bg-zinc-900 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs uppercase tracking-wider text-zinc-400 font-bold mb-2">
+                        Nomor WhatsApp
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={profileAdmin.whatsapp}
+                        onChange={(e) =>
+                          setProfileAdmin({
+                            ...profileAdmin,
+                            whatsapp: e.target.value,
+                          })
+                        }
+                        className="w-full bg-zinc-900/50 border border-zinc-800 p-3.5 rounded-xl text-sm text-white outline-none focus:border-red-600 focus:bg-zinc-900 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs uppercase tracking-wider text-zinc-400 font-bold mb-2">
+                        Password Baru (Opsional)
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="Isi jika ingin mengganti password"
+                        value={profileAdmin.password}
+                        onChange={(e) =>
+                          setProfileAdmin({
+                            ...profileAdmin,
+                            password: e.target.value,
+                          })
+                        }
+                        className="w-full bg-zinc-900/50 border border-zinc-800 p-3.5 rounded-xl text-sm text-white outline-none focus:border-red-600 focus:bg-zinc-900 transition-all"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-red-900/20 transition"
+                    >
+                      Simpan Profil Admin
+                    </button>
+                  </form>
+                </div>
+              )}
+
+              {activeTab === "profile-bengkel" && (
+                <div className="bg-zinc-950/80 backdrop-blur-md p-6 rounded-3xl border border-zinc-900/80 shadow-2xl max-w-3xl mx-auto">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-12 h-12 rounded-xl bg-red-600/10 border border-red-600/20 flex items-center justify-center">
+                      <Store className="w-5 h-5 text-red-500" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-bold">
+                        Informasi Umum
+                      </p>
+                      <h2 className="text-xl font-black text-white">
+                        Profil Bengkel
+                      </h2>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleUpdateBengkel} className="space-y-5">
+                    <div>
+                      <label className="block text-xs uppercase tracking-wider text-zinc-400 font-bold mb-2">
+                        Nama Bengkel
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={profileBengkel.name}
+                        onChange={(e) =>
+                          setProfileBengkel({
+                            ...profileBengkel,
+                            name: e.target.value,
+                          })
+                        }
+                        className="w-full bg-zinc-900/50 border border-zinc-800 p-3.5 rounded-xl text-sm text-white outline-none focus:border-red-600 focus:bg-zinc-900 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs uppercase tracking-wider text-zinc-400 font-bold mb-2">
+                        Nomor Telepon Bengkel
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={profileBengkel.phone}
+                        onChange={(e) =>
+                          setProfileBengkel({
+                            ...profileBengkel,
+                            phone: e.target.value,
+                          })
+                        }
+                        className="w-full bg-zinc-900/50 border border-zinc-800 p-3.5 rounded-xl text-sm text-white outline-none focus:border-red-600 focus:bg-zinc-900 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs uppercase tracking-wider text-zinc-400 font-bold mb-2">
+                        Alamat Lengkap
+                      </label>
+                      <textarea
+                        required
+                        rows="4"
+                        value={profileBengkel.address}
+                        onChange={(e) =>
+                          setProfileBengkel({
+                            ...profileBengkel,
+                            address: e.target.value,
+                          })
+                        }
+                        className="w-full bg-zinc-900/50 border border-zinc-800 p-3.5 rounded-xl text-sm text-white outline-none focus:border-red-600 focus:bg-zinc-900 transition-all resize-none"
+                      ></textarea>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-900/20 transition"
+                    >
+                      Simpan Informasi Bengkel
+                    </button>
+                  </form>
                 </div>
               )}
             </motion.div>

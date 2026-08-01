@@ -23,6 +23,7 @@ const adminBengkelRoutes = require("./routes/adminBengkel");
 const superadminBookingRoutes = require("./routes/superadminBookings");
 const scheduleRoutes = require("./routes/schedules");
 const registerMitraRoutes = require("./routes/registerMitra");
+const profileRoutes = require("./routes/profile");
 
 // ==========================================
 // 3. GUNAKAN ROUTES
@@ -37,6 +38,7 @@ app.use("/api/admin-bengkel", adminBengkelRoutes);
 app.use("/api/superadmin-bookings", superadminBookingRoutes);
 app.use("/api/schedules", scheduleRoutes);
 app.use("/api/register-mitra", registerMitraRoutes);
+app.use("/api/profile", profileRoutes);
 
 // Root Endpoint API
 app.get("/", (req, res) => {
