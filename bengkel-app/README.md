@@ -131,7 +131,6 @@ Setelah server aktif, Anda bisa masuk ke aplikasi melalui halaman login/register
 - User / pelanggan
 - Admin bengkel
 - Superadmin
-- Mitra bengkel
 
 ## 5. Endpoint API Utama
 
