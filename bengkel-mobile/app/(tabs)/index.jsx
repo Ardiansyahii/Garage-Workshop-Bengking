@@ -131,7 +131,7 @@ export default function LandingScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerCta}
-            onPress={() => router.push("/register")}
+            onPress={() => router.push("/Register")}
           >
             <Text style={styles.headerCtaText}>Buat Akun</Text>
             <ArrowRight size={14} color="#fff" />
