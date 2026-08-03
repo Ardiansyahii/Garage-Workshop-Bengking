@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
-  ImageBackground,
+  Image,
   ActivityIndicator,
   Alert,
-  StyleSheet,
-  SafeAreaView,
-  StatusBar,
+  Animated,
   Dimensions,
+  StyleSheet,
 } from "react-native";
+import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   Wrench,
@@ -22,15 +22,31 @@ import {
   ChevronRight,
   MapPin,
   Phone,
-  Store,
 } from "lucide-react-native";
 
-const { width } = Dimensions.get("window");
-const API_URL = "https://your-api-domain.com"; // Ganti dengan URL API kamu
+// ==========================================
+// KONFIGURASI
+// ==========================================
+// Ganti dengan base URL backend Express kamu.
+// Di React Native TIDAK ADA process.env.NEXT_PUBLIC_API_URL bawaan Next.js,
+// jadi definisikan langsung di sini atau lewat file config/env terpisah
+// (misal pakai react-native-dotenv / expo-constants).
+const API_URL = "http://192.168.1.16:5000";
 
-export default function LandingScreen({ navigation }) {
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+// Ganti dengan path gambar lokal kamu, contoh:
+// const workshopBg = require("../assets/workshop-bg.png");
+// lalu pakai <Image source={workshopBg} ... />
+const WORKSHOP_BG_URI = "../../assets/banner-bg.png";
+
+export default function LandingScreen() {
+  const router = useRouter();
   const [bengkels, setBengkels] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
 
   useEffect(() => {
     fetch(`${API_URL}/api/bengkels`)
@@ -47,35 +63,40 @@ export default function LandingScreen({ navigation }) {
       });
   }, []);
 
-  const handleCtaClick = async () => {
-    try {
-      const session = await AsyncStorage.getItem("user_session");
+  useEffect(() => {
+    if (!isLoading) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [isLoading]);
 
-      if (session) {
-        const parsed = JSON.parse(session);
-        // Navigasi sesuai role
-        if (parsed.role === "superadmin") {
-          navigation.navigate("SuperAdminDashboard");
-        } else if (parsed.role === "admin_bengkel") {
-          navigation.navigate("AdminDashboard");
-        } else {
-          navigation.navigate("UserDashboard");
-        }
-      } else {
-        Alert.alert(
-          "Autentikasi Diperlukan",
-          "Silakan masuk atau daftar akun terlebih dahulu untuk melakukan reservasi servis kendaraan.",
-          [
-            { text: "Nanti Saja", style: "cancel" },
-            {
-              text: "Masuk / Daftar",
-              onPress: () => navigation.navigate("Login"),
-            },
-          ]
-        );
-      }
-    } catch (e) {
-      console.error(e);
+  const handleCtaClick = async () => {
+    const session = await AsyncStorage.getItem("user_session");
+
+    if (session) {
+      const parsed = JSON.parse(session);
+      if (parsed.role === "superadmin") router.push("/superadmin");
+      else if (parsed.role === "admin_bengkel") router.push("/admin");
+      else router.push("/dashboard");
+    } else {
+      Alert.alert(
+        "Autentikasi Diperlukan",
+        "Silakan masuk atau daftar akun terlebih dahulu untuk melakukan reservasi servis kendaraan.",
+        [
+          { text: "Nanti Saja", style: "cancel" },
+          { text: "Masuk / Daftar", onPress: () => router.push("/login") },
+        ],
+      );
     }
   };
 
@@ -92,37 +113,53 @@ export default function LandingScreen({ navigation }) {
   const otherBengkels = bengkels.slice(3);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
-
-      {/* HEADER / NAVBAR */}
+    <View style={styles.container}>
+      {/* HEADER */}
       <View style={styles.header}>
-        <View style={styles.logoContainer}>
-          <View style={styles.logoIcon}>
-            <Wrench size={16} color="#FFFFFF" />
+        <View style={styles.logoRow}>
+          <View style={styles.logoBox}>
+            <Wrench size={16} color="#fff" />
           </View>
           <Text style={styles.logoText}>
             BENGKEL<Text style={{ color: "#dc2626" }}>KU</Text>
           </Text>
         </View>
-        <TouchableOpacity
-          style={styles.headerBtn}
-          onPress={() => navigation.navigate("Login")}
-        >
-          <Text style={styles.headerBtnText}>Masuk</Text>
-        </TouchableOpacity>
+
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={() => router.push("/login")}>
+            <Text style={styles.headerLink}>Masuk</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerCta}
+            onPress={() => router.push("/register")}
+          >
+            <Text style={styles.headerCtaText}>Buat Akun</Text>
+            <ArrowRight size={14} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
       >
         {/* HERO SECTION */}
-        <View style={styles.heroContainer}>
-          <ImageBackground
-            source={{ uri: "https://via.placeholder.com/800x600" }} // Ganti dengan path gambar kamu
-            style={styles.heroBg}
-            imageStyle={{ opacity: 0.3 }}
+        <View style={styles.hero}>
+          <Image
+            source={{ uri: WORKSHOP_BG_URI }}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+          />
+          <View style={styles.heroOverlay} />
+
+          <Animated.View
+            style={{
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+              alignItems: "center",
+              paddingHorizontal: 24,
+            }}
           >
             <View style={styles.badge}>
               <View style={styles.badgeDot} />
@@ -137,84 +174,88 @@ export default function LandingScreen({ navigation }) {
             </Text>
 
             <Text style={styles.heroSubtitle}>
-              Booking servis kendaraan tanpa antre, bandingkan harga bengkel, dan
-              pantau progres pengerjaan secara real-time.
+              Booking servis kendaraan tanpa antre, bandingkan harga bengkel,
+              dan pantau progres pengerjaan secara real-time.
             </Text>
 
-            <View style={styles.ctaButtonGroup}>
+            <View style={styles.heroButtons}>
               <TouchableOpacity
-                style={styles.primaryCta}
+                style={styles.primaryButton}
                 onPress={handleCtaClick}
               >
-                <Text style={styles.primaryCtaText}>Mulai Reservasi</Text>
-                <ArrowRight size={16} color="#FFFFFF" />
+                <Text style={styles.primaryButtonText}>Mulai Reservasi</Text>
+                <ArrowRight size={16} color="#fff" />
               </TouchableOpacity>
-
               <TouchableOpacity
-                style={styles.secondaryCta}
-                onPress={() => navigation.navigate("Login")}
+                style={styles.secondaryButton}
+                onPress={() => router.push("/login")}
               >
-                <Text style={styles.secondaryCtaText}>Akses Dashboard</Text>
+                <Text style={styles.secondaryButtonText}>
+                  Akses Dashboard
+                </Text>
               </TouchableOpacity>
             </View>
-          </ImageBackground>
+          </Animated.View>
         </View>
 
         {/* SECTION 1: BENGKEL POPULER */}
         {bestBengkels.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionSubtitle}>MITRA UNGGULAN</Text>
-            <Text style={styles.sectionTitle}>Bengkel Rekomendasi Kami</Text>
-            <Text style={styles.sectionDesc}>
-              Dipercaya ratusan pelanggan dengan mekanik profesional
-              tersertifikasi.
-            </Text>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionEyebrow}>Mitra Unggulan</Text>
+              <Text style={styles.sectionTitle}>Bengkel Rekomendasi Kami</Text>
+              <Text style={styles.sectionSubtitle}>
+                Dipercaya ratusan pelanggan dengan mekanik profesional
+                tersertifikasi.
+              </Text>
+            </View>
 
-            <View style={styles.cardList}>
+            <View style={styles.cardStack}>
               {bestBengkels.map((bengkel, index) => {
                 const isPopular = index === 1;
                 return (
                   <View
-                    key={bengkel.id || index.toString()}
+                    key={bengkel.id}
                     style={[
                       styles.bengkelCard,
-                      isPopular && styles.popularBengkelCard,
+                      isPopular && styles.bengkelCardPopular,
                     ]}
                   >
                     {isPopular && (
                       <View style={styles.popularBadge}>
-                        <Star size={10} color="#FFFFFF" fill="#FFFFFF" />
+                        <Star size={10} color="#fff" fill="#fff" />
                         <Text style={styles.popularBadgeText}>POPULAR</Text>
                       </View>
                     )}
+
                     <Text style={styles.bengkelName}>{bengkel.name}</Text>
-                    <View style={styles.infoGroup}>
-                      <View style={styles.infoRow}>
-                        <MapPin size={14} color="#ef4444" />
-                        <Text style={styles.infoText}>{bengkel.address}</Text>
-                      </View>
-                      <View style={styles.infoRow}>
-                        <Phone size={14} color="#ef4444" />
-                        <Text style={styles.infoText}>{bengkel.phone}</Text>
-                      </View>
+
+                    <View style={styles.bengkelInfoRow}>
+                      <MapPin size={14} color="#ef4444" />
+                      <Text style={styles.bengkelInfoText}>
+                        {bengkel.address}
+                      </Text>
+                    </View>
+                    <View style={styles.bengkelInfoRow}>
+                      <Phone size={14} color="#ef4444" />
+                      <Text style={styles.bengkelInfoText}>
+                        {bengkel.phone}
+                      </Text>
                     </View>
 
                     <TouchableOpacity
                       style={[
-                        styles.cardButton,
-                        isPopular ? styles.popularBtn : styles.normalBtn,
+                        styles.bengkelButton,
+                        isPopular
+                          ? styles.bengkelButtonPopular
+                          : styles.bengkelButtonDefault,
                       ]}
                       onPress={handleCtaClick}
                     >
-                      <Text
-                        style={[
-                          styles.cardBtnText,
-                          isPopular ? { color: "#FFF" } : { color: "#FFF" },
-                        ]}
-                      >
+                      <Text style={styles.bengkelButtonText}>
                         Booking di Sini
                       </Text>
-                      <ChevronRight size={14} color="#FFFFFF" />
+                      <ChevronRight size={14} color="#fff" />
                     </TouchableOpacity>
                   </View>
                 );
@@ -225,35 +266,34 @@ export default function LandingScreen({ navigation }) {
 
         {/* SECTION 2: DAFTAR BENGKEL LAINNYA */}
         {otherBengkels.length > 0 && (
-          <View style={[styles.section, styles.borderTop]}>
-            <Text style={styles.sectionTitle}>Katalog Mitra Bengkel</Text>
-            <Text style={styles.sectionDesc}>
-              Temukan bengkel terdekat di wilayahmu.
-            </Text>
+          <View style={[styles.section, styles.sectionBorderTop]}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Katalog Mitra Bengkel</Text>
+              <Text style={styles.sectionSubtitle}>
+                Temukan bengkel terdekat di wilayahmu.
+              </Text>
+            </View>
 
-            <View style={styles.cardList}>
-              {otherBengkels.map((bengkel, index) => (
-                <View
-                  key={bengkel.id || index.toString()}
-                  style={styles.otherBengkelCard}
-                >
-                  <Text style={styles.otherBengkelTitle}>{bengkel.name}</Text>
-                  <View style={styles.infoGroup}>
-                    <View style={styles.infoRow}>
-                      <MapPin size={12} color="#a1a1aa" />
-                      <Text style={styles.infoText}>{bengkel.address}</Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Phone size={12} color="#a1a1aa" />
-                      <Text style={styles.infoText}>{bengkel.phone}</Text>
-                    </View>
+            <View style={styles.cardStack}>
+              {otherBengkels.map((bengkel) => (
+                <View key={bengkel.id} style={styles.otherCard}>
+                  <Text style={styles.otherCardName}>{bengkel.name}</Text>
+                  <View style={styles.bengkelInfoRow}>
+                    <MapPin size={13} color="#a1a1aa" />
+                    <Text style={styles.otherCardText}>
+                      {bengkel.address}
+                    </Text>
+                  </View>
+                  <View style={styles.bengkelInfoRow}>
+                    <Phone size={13} color="#a1a1aa" />
+                    <Text style={styles.otherCardText}>{bengkel.phone}</Text>
                   </View>
 
                   <TouchableOpacity
-                    style={styles.otherBengkelBtn}
+                    style={styles.otherCardButton}
                     onPress={handleCtaClick}
                   >
-                    <Text style={styles.otherBengkelBtnText}>
+                    <Text style={styles.otherCardButtonText}>
                       Pilih Bengkel Ini
                     </Text>
                     <ChevronRight size={14} color="#d4d4d8" />
@@ -264,56 +304,36 @@ export default function LandingScreen({ navigation }) {
           </View>
         )}
 
-        {/* SECTION 3: CTA GABUNG MITRA */}
-        <View style={styles.mitraBanner}>
-          <Text style={styles.mitraTitle}>Punya Bengkel Sendiri?</Text>
-          <Text style={styles.mitraSubtitle}>
-            Tingkatkan Omset Bersama Kami.
-          </Text>
-          <Text style={styles.mitraDesc}>
-            Bergabunglah menjadi mitra BengkelKu. Kelola antrean lebih mudah,
-            jangkau lebih banyak pelanggan, dan atur jadwal operasional secara
-            digital 100% gratis.
-          </Text>
-          <TouchableOpacity
-            style={styles.mitraBtn}
-            onPress={() => navigation.navigate("RegisterMitra")}
-          >
-            <Store size={18} color="#000000" />
-            <Text style={styles.mitraBtnText}>Daftar Mitra Sekarang</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* SECTION 4: VALUE PROPS */}
-        <View style={[styles.section, styles.borderTop]}>
-          <View style={styles.propCard}>
-            <View style={styles.propIconBox}>
+        {/* SECTION 3: VALUE PROPS */}
+        <View style={[styles.section, styles.sectionBorderTop]}>
+          <View style={styles.valueCard}>
+            <View style={styles.valueIconBox}>
               <Clock size={20} color="#dc2626" />
             </View>
-            <Text style={styles.propTitle}>Realtime Tracking</Text>
-            <Text style={styles.propDesc}>
+            <Text style={styles.valueTitle}>Realtime Tracking</Text>
+            <Text style={styles.valueText}>
               Pantau status pengerjaan kendaraanmu secara langsung dari
               perangkat kapanpun dan dimanapun.
             </Text>
           </View>
 
-          <View style={styles.propCard}>
-            <View style={styles.propIconBox}>
+          <View style={styles.valueCard}>
+            <View style={styles.valueIconBox}>
               <ShieldCheck size={20} color="#dc2626" />
             </View>
-            <Text style={styles.propTitle}>Mitra Terpercaya</Text>
-            <Text style={styles.propDesc}>
-              Bekerja sama dengan puluhan bengkel bersertifikasi untuk menjamin
-              kualitas servis kendaraan Anda.
+            <Text style={styles.valueTitle}>Mitra Terpercaya</Text>
+            <Text style={styles.valueText}>
+              Bekerja sama dengan puluhan bengkel bersertifikasi untuk
+              menjamin kualitas servis kendaraan Anda.
             </Text>
           </View>
 
-          <View style={styles.propCard}>
-            <View style={styles.propIconBox}>
+          <View style={styles.valueCard}>
+            <View style={styles.valueIconBox}>
               <Wrench size={20} color="#dc2626" />
             </View>
-            <Text style={styles.propTitle}>Transparan & Cepat</Text>
-            <Text style={styles.propDesc}>
+            <Text style={styles.valueTitle}>Transparan & Cepat</Text>
+            <Text style={styles.valueText}>
               Bebas antre di lokasi, estimasi pengerjaan jelas, dan layanan
               komprehensif tanpa biaya tersembunyi.
             </Text>
@@ -322,356 +342,381 @@ export default function LandingScreen({ navigation }) {
 
         {/* FOOTER */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>
+          <Text style={styles.footerCopy}>
             © {new Date().getFullYear()} BENGKELKU. All rights reserved.
           </Text>
+          <View style={styles.footerLinks}>
+            <TouchableOpacity onPress={() => router.push("/login")}>
+              <Text style={styles.footerLink}>Masuk</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push("/register")}>
+              <Text style={styles.footerLink}>Daftar</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#000",
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: "#000000",
-    justifyContent: "center",
+    backgroundColor: "#000",
     alignItems: "center",
-    gap: 12,
+    justifyContent: "center",
+    gap: 16,
   },
   loadingText: {
     color: "#71717a",
-    fontWeight: "bold",
-    fontSize: 14,
+    fontWeight: "700",
+    fontSize: 13,
   },
+  scroll: {
+    flex: 1,
+  },
+
+  // HEADER
   header: {
-    height: 60,
-    backgroundColor: "rgba(0, 0, 0, 0.9)",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    height: 64,
     paddingHorizontal: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(0,0,0,0.9)",
     borderBottomWidth: 1,
     borderBottomColor: "#18181b",
   },
-  logoContainer: {
+  logoRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },
-  logoIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 6,
+  logoBox: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
     backgroundColor: "#dc2626",
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
   },
   logoText: {
-    color: "#FFFFFF",
+    color: "#fff",
     fontWeight: "900",
-    fontSize: 16,
+    fontSize: 15,
     letterSpacing: 1,
   },
-  headerBtn: {
-    backgroundColor: "#18181b",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
   },
-  headerBtnText: {
+  headerLink: {
     color: "#a1a1aa",
     fontSize: 12,
     fontWeight: "600",
   },
-  scrollContent: {
-    paddingBottom: 40,
-  },
-  heroContainer: {
-    minHeight: 450,
-    backgroundColor: "#000000",
-  },
-  heroBg: {
-    flex: 1,
-    padding: 20,
-    justifyContent: "center",
+  headerCta: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: 6,
+    backgroundColor: "#dc2626",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  headerCtaText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+
+  // HERO
+  hero: {
+    minHeight: 560,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 60,
+    paddingBottom: 60,
+    overflow: "hidden",
+  },
+  heroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.6)",
   },
   badge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(24, 24, 27, 0.8)",
+    gap: 8,
+    backgroundColor: "rgba(24,24,27,0.8)",
     borderWidth: 1,
     borderColor: "#27272a",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginBottom: 16,
-    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
+    marginBottom: 20,
   },
   badgeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 7,
+    height: 7,
+    borderRadius: 999,
     backgroundColor: "#dc2626",
   },
   badgeText: {
     color: "#d4d4d8",
-    fontSize: 12,
+    fontSize: 11,
+    fontWeight: "600",
   },
   heroTitle: {
-    color: "#FFFFFF",
-    fontSize: 28,
+    color: "#fff",
+    fontSize: SCREEN_WIDTH < 380 ? 32 : 38,
     fontWeight: "900",
     textAlign: "center",
-    lineHeight: 36,
-    marginBottom: 12,
+    lineHeight: SCREEN_WIDTH < 380 ? 38 : 44,
+    marginBottom: 16,
   },
   heroSubtitle: {
     color: "#d4d4d8",
     fontSize: 13,
     textAlign: "center",
     lineHeight: 20,
-    maxWidth: 320,
-    marginBottom: 24,
+    marginBottom: 28,
+    maxWidth: 440,
   },
-  ctaButtonGroup: {
+  heroButtons: {
     width: "100%",
     gap: 12,
   },
-  primaryCta: {
-    backgroundColor: "#dc2626",
+  primaryButton: {
     flexDirection: "row",
-    justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 14,
-    borderRadius: 12,
+    justifyContent: "center",
     gap: 8,
+    backgroundColor: "#dc2626",
+    paddingVertical: 16,
+    borderRadius: 14,
   },
-  primaryCtaText: {
-    color: "#FFFFFF",
-    fontWeight: "bold",
-    fontSize: 14,
+  primaryButtonText: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 13,
   },
-  secondaryCta: {
-    backgroundColor: "rgba(39, 39, 42, 0.8)",
+  secondaryButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(39,39,42,0.8)",
     borderWidth: 1,
     borderColor: "#52525b",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 16,
+    borderRadius: 14,
   },
-  secondaryCtaText: {
+  secondaryButtonText: {
     color: "#e4e4e7",
-    fontWeight: "bold",
-    fontSize: 14,
+    fontWeight: "800",
+    fontSize: 13,
   },
+
+  // SECTIONS
   section: {
-    padding: 20,
-    marginTop: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 40,
   },
-  borderTop: {
+  sectionBorderTop: {
     borderTopWidth: 1,
-    borderTopColor: "#18181b",
+    borderTopColor: "rgba(39,39,42,0.8)",
   },
-  sectionSubtitle: {
+  sectionHeader: {
+    alignItems: "center",
+    marginBottom: 28,
+    gap: 6,
+  },
+  sectionEyebrow: {
     color: "#dc2626",
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "900",
     letterSpacing: 1.5,
-    textAlign: "center",
-    marginBottom: 4,
+    textTransform: "uppercase",
   },
   sectionTitle: {
-    color: "#FFFFFF",
+    color: "#fff",
     fontSize: 22,
     fontWeight: "900",
     textAlign: "center",
-    marginBottom: 6,
   },
-  sectionDesc: {
+  sectionSubtitle: {
     color: "#a1a1aa",
     fontSize: 12,
     textAlign: "center",
-    marginBottom: 24,
   },
-  cardList: {
+
+  cardStack: {
     gap: 16,
   },
+
+  // BENGKEL CARD (populer)
   bengkelCard: {
-    backgroundColor: "#09090b",
+    backgroundColor: "rgba(9,9,11,0.8)",
     borderWidth: 1,
     borderColor: "#18181b",
     borderRadius: 20,
-    padding: 20,
+    padding: 22,
   },
-  popularBengkelCard: {
-    borderColor: "#dc2626",
+  bengkelCardPopular: {
     borderWidth: 2,
-    backgroundColor: "#09090b",
+    borderColor: "#dc2626",
+    backgroundColor: "#0a0a0a",
   },
   popularBadge: {
     position: "absolute",
-    top: 12,
-    right: 12,
-    backgroundColor: "#dc2626",
+    top: -12,
+    right: 20,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
     gap: 4,
+    backgroundColor: "#dc2626",
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 999,
   },
   popularBadgeText: {
-    color: "#FFFFFF",
+    color: "#fff",
     fontSize: 9,
     fontWeight: "900",
+    letterSpacing: 1,
   },
   bengkelName: {
-    color: "#FFFFFF",
+    color: "#fff",
     fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 12,
+    fontWeight: "900",
+    marginBottom: 10,
   },
-  infoGroup: {
-    gap: 6,
-    marginBottom: 20,
-  },
-  infoRow: {
+  bengkelInfoRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 8,
+    marginBottom: 6,
   },
-  infoText: {
+  bengkelInfoText: {
     color: "#a1a1aa",
     fontSize: 12,
-    flexShrink: 1,
+    flex: 1,
   },
-  cardButton: {
+  bengkelButton: {
+    marginTop: 18,
     flexDirection: "row",
-    justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 12,
-    borderRadius: 10,
+    justifyContent: "center",
     gap: 6,
+    paddingVertical: 14,
+    borderRadius: 12,
   },
-  popularBtn: {
-    backgroundColor: "#dc2626",
-  },
-  normalBtn: {
+  bengkelButtonDefault: {
     backgroundColor: "#18181b",
-  },
-  cardBtnText: {
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  otherBengkelCard: {
-    backgroundColor: "#09090b",
-    borderWidth: 1,
-    borderColor: "#18181b",
-    borderRadius: 14,
-    padding: 16,
-    gap: 12,
-  },
-  otherBengkelTitle: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  otherBengkelBtn: {
-    backgroundColor: "#18181b",
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 10,
-    borderRadius: 8,
-    gap: 4,
-  },
-  otherBengkelBtnText: {
-    color: "#d4d4d8",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  mitraBanner: {
-    margin: 20,
-    backgroundColor: "#18181b",
-    borderRadius: 20,
-    padding: 24,
     borderWidth: 1,
     borderColor: "#27272a",
   },
-  mitraTitle: {
-    color: "#FFFFFF",
-    fontSize: 20,
-    fontWeight: "900",
+  bengkelButtonPopular: {
+    backgroundColor: "#dc2626",
   },
-  mitraSubtitle: {
-    color: "#ef4444",
-    fontSize: 18,
-    fontWeight: "bold",
+  bengkelButtonText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+
+  // OTHER BENGKEL CARD
+  otherCard: {
+    backgroundColor: "rgba(9,9,11,0.6)",
+    borderWidth: 1,
+    borderColor: "#18181b",
+    borderRadius: 16,
+    padding: 18,
+  },
+  otherCardName: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "800",
     marginBottom: 8,
   },
-  mitraDesc: {
+  otherCardText: {
     color: "#a1a1aa",
     fontSize: 12,
-    lineHeight: 18,
-    marginBottom: 20,
+    flex: 1,
   },
-  mitraBtn: {
-    backgroundColor: "#FFFFFF",
+  otherCardButton: {
+    marginTop: 14,
     flexDirection: "row",
-    justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 14,
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#18181b",
+    borderWidth: 1,
+    borderColor: "#27272a",
+    paddingVertical: 11,
     borderRadius: 12,
-    gap: 8,
   },
-  mitraBtnText: {
-    color: "#000000",
-    fontWeight: "900",
-    fontSize: 13,
+  otherCardButtonText: {
+    color: "#d4d4d8",
+    fontSize: 12,
+    fontWeight: "700",
   },
-  propCard: {
+
+  // VALUE PROPS
+  valueCard: {
     backgroundColor: "#09090b",
     borderWidth: 1,
     borderColor: "#18181b",
-    padding: 20,
     borderRadius: 16,
-    marginBottom: 12,
+    padding: 20,
+    marginBottom: 16,
+    gap: 8,
   },
-  propIconBox: {
+  valueIconBox: {
     width: 40,
     height: 40,
-    borderRadius: 10,
-    backgroundColor: "rgba(220, 38, 38, 0.1)",
-    justifyContent: "center",
+    borderRadius: 12,
+    backgroundColor: "rgba(220,38,38,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(239,68,68,0.2)",
     alignItems: "center",
-    marginBottom: 12,
+    justifyContent: "center",
+    marginBottom: 4,
   },
-  propTitle: {
-    color: "#FFFFFF",
+  valueTitle: {
+    color: "#fff",
     fontSize: 14,
-    fontWeight: "bold",
-    marginBottom: 6,
+    fontWeight: "800",
   },
-  propDesc: {
+  valueText: {
     color: "#a1a1aa",
     fontSize: 12,
     lineHeight: 18,
   },
+
+  // FOOTER
   footer: {
-    padding: 20,
-    alignItems: "center",
     borderTopWidth: 1,
     borderTopColor: "#18181b",
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    gap: 12,
   },
-  footerText: {
-    color: "#52525b",
+  footerCopy: {
+    color: "#71717a",
     fontSize: 11,
+  },
+  footerLinks: {
+    flexDirection: "row",
+    gap: 20,
+  },
+  footerLink: {
+    color: "#71717a",
+    fontSize: 11,
+    fontWeight: "600",
   },
 });

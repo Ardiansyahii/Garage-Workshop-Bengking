@@ -43,8 +43,14 @@ export default function UserDashboard() {
     "Dibatalkan",
   ];
 
+  // ==========================================
+  // FIX: endpoint & query param disesuaikan dengan backend Express
+  // Sebelumnya: /api/user-bookings?userId=... (404, endpoint tidak ada)
+  // Sekarang:   /api/bookings?user_id=...     (sesuai routes/bookings.js
+  //             & bookingController.getAllBookings)
+  // ==========================================
   const fetchBookings = (userId) => {
-    fetchWithAuth(`/api/user-bookings?userId=${userId}`)
+    fetchWithAuth(`/api/bookings?user_id=${userId}`)
       .then((data) => {
         if (data?.success) {
           setBookings(data.data);
@@ -121,6 +127,9 @@ export default function UserDashboard() {
 
     if (cancelReason) {
       try {
+        // NOTE: endpoint ini (/api/booking/cancel) belum terkonfirmasi ada
+        // di backend (routes/bookings.js). Cek dulu apakah route & controller
+        // untuk pembatalan booking sudah dibuat, kalau belum akan 404 juga.
         const data = await fetchWithAuth("/api/booking/cancel", {
           method: "PATCH",
           body: JSON.stringify({ booking_id: bookingId, reason: cancelReason }),
@@ -192,6 +201,10 @@ export default function UserDashboard() {
 
     if (formValues) {
       try {
+        // NOTE: request ini PATCH ke /api/bookings (list endpoint), bukan ke
+        // /api/bookings/:id. Cek lagi apakah backend memang punya handler
+        // PATCH pada root "/", karena routes/bookings.js yang sebelumnya
+        // dishare hanya punya PATCH /:id/status, bukan PATCH untuk reschedule.
         const data = await fetchWithAuth(`/api/bookings?user_id=${user.id}`, {
           method: "PATCH",
           body: JSON.stringify({
