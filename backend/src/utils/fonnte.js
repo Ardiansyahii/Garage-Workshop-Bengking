@@ -60,6 +60,14 @@ const sendWhatsAppNotification = async (target, message, options = {}) => {
 
         const data = await response.json().catch(() => ({}));
 
+        // TAMBAHAN: log respons ASLI dari Fonnte, baik sukses maupun gagal.
+        // Ini kunci debugging-nya: lihat isi 'data' persis apa yang dibalas
+        // Fonnte (status, reason, detail, device, dll).
+        console.log(
+          `📩 [Fonnte] target=${normalizedTarget} httpStatus=${response.status} response=`,
+          JSON.stringify(data),
+        );
+
         if (!response.ok || data?.status === false || data?.error) {
           lastError =
             data?.message || data?.reason || `HTTP ${response.status}`;
