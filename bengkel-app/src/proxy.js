@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-export function middleware(request) {
+export function proxy(request) {
   // Ambil path URL saat ini (misal: /admin, /superadmin, /login)
   const path = request.nextUrl.pathname;
 
@@ -47,7 +47,7 @@ export function middleware(request) {
   return NextResponse.next();
 }
 
-// Konfigurasi route mana saja yang wajib dijaga ketat oleh Middleware ini
+// Konfigurasi route mana saja yang wajib dijaga ketat oleh Proxy ini
 export const config = {
   matcher: [
     "/",

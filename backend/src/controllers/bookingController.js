@@ -57,19 +57,43 @@ exports.createBooking = async (req, res, next) => {
       service_id,
       booking_date,
       booking_time,
+      vehicle_name,
+      license_plate,
     } = req.body;
 
-    if (
-      !user_id ||
-      !bengkel_id ||
-      !vehicle_id ||
-      !service_id ||
-      !booking_date ||
-      !booking_time
-    ) {
+    if (!user_id || !bengkel_id || !service_id || !booking_date || !booking_time) {
       return res
         .status(400)
         .json({ success: false, message: "Semua data booking wajib diisi!" });
+    }
+
+    let resolvedVehicleId = vehicle_id;
+
+    if (!resolvedVehicleId) {
+      if (!vehicle_name || !license_plate) {
+        return res.status(400).json({
+          success: false,
+          message: "Data kendaraan wajib diisi: nama kendaraan dan plat nomor.",
+        });
+      }
+
+      const normalizedPlate = String(license_plate).trim().toUpperCase();
+      const normalizedVehicleName = String(vehicle_name).trim();
+
+      const [existingVehicle] = await db.query(
+        "SELECT id FROM vehicles WHERE user_id = ? AND LOWER(TRIM(license_plate)) = LOWER(?) LIMIT 1",
+        [user_id, normalizedPlate],
+      );
+
+      if (existingVehicle.length > 0) {
+        resolvedVehicleId = existingVehicle[0].id;
+      } else {
+        const [vehicleResult] = await db.query(
+          "INSERT INTO vehicles (user_id, vehicle_name, license_plate) VALUES (?, ?, ?)",
+          [user_id, normalizedVehicleName, normalizedPlate],
+        );
+        resolvedVehicleId = vehicleResult.insertId;
+      }
     }
 
     // Generate kode unik booking
@@ -80,7 +104,7 @@ exports.createBooking = async (req, res, next) => {
       [
         user_id,
         bengkel_id,
-        vehicle_id,
+        resolvedVehicleId,
         service_id,
         booking_date,
         booking_time,
