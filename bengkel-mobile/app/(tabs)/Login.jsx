@@ -12,6 +12,7 @@ import {
   StyleSheet,
   Dimensions,
   Platform,
+  Image,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
@@ -21,9 +22,6 @@ import {
   Lock,
   ArrowLeft,
   ArrowRight,
-  ShieldCheck,
-  LayoutDashboard,
-  Clock,
 } from "lucide-react-native";
 
 const { width } = Dimensions.get("window");
@@ -111,6 +109,17 @@ export default function LoginScreen() {
     }
   };
 
+  // Dummy handler untuk login sosial (Google / Facebook).
+  // Ganti isi fungsi ini dengan integrasi OAuth asli nanti
+  // (misal expo-auth-session, firebase auth, dsb).
+  const handleSocialLogin = (provider) => {
+    Alert.alert(
+      `Masuk dengan ${provider}`,
+      `Ini masih tombol dummy untuk ${provider}. Integrasi OAuth belum terhubung ke backend.`,
+      [{ text: "Oke" }],
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
@@ -150,45 +159,6 @@ export default function LoginScreen() {
             Portal akses eksklusif bagi administrator dan pengguna untuk
             mengelola operasional harian.
           </Text>
-
-          {/* FEATURE LIST */}
-          <View style={styles.featureList}>
-            <View style={styles.featureItem}>
-              <View style={styles.featureIconBox}>
-                <LayoutDashboard size={16} color="#ef4444" />
-              </View>
-              <View style={styles.featureTextGroup}>
-                <Text style={styles.featureTitle}>Manajemen Terpadu</Text>
-                <Text style={styles.featureDesc}>
-                  Kelola data pelanggan, kendaraan, dan layanan dalam satu tempat.
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.featureItem}>
-              <View style={styles.featureIconBox}>
-                <Clock size={16} color="#ef4444" />
-              </View>
-              <View style={styles.featureTextGroup}>
-                <Text style={styles.featureTitle}>Antrean Real-Time</Text>
-                <Text style={styles.featureDesc}>
-                  Pantau dan perbarui status pengerjaan kendaraan secara langsung.
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.featureItem}>
-              <View style={styles.featureIconBox}>
-                <ShieldCheck size={16} color="#ef4444" />
-              </View>
-              <View style={styles.featureTextGroup}>
-                <Text style={styles.featureTitle}>Sistem Aman Terenkripsi</Text>
-                <Text style={styles.featureDesc}>
-                  Data operasional tersimpan aman dengan enkripsi tinggi.
-                </Text>
-              </View>
-            </View>
-          </View>
         </View>
 
         {/* FORM LOGIN */}
@@ -249,21 +219,42 @@ export default function LoginScreen() {
             )}
           </TouchableOpacity>
 
+          {/* DIVIDER */}
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>atau lanjutkan dengan</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* SOCIAL LOGIN (DUMMY) */}
+          <View style={styles.socialRow}>
+            <TouchableOpacity
+              style={styles.socialButton}
+              onPress={() => handleSocialLogin("Google")}
+            >
+              <Image
+                source={{ uri: "https://www.google.com/favicon.ico" }}
+                style={styles.socialIcon}
+              />
+              <Text style={styles.socialButtonText}>Google</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.socialButton}
+              onPress={() => handleSocialLogin("Facebook")}
+            >
+              <Text style={[styles.socialIconLetter, { color: "#1877F2" }]}>
+                f
+              </Text>
+              <Text style={styles.socialButtonText}>Facebook</Text>
+            </TouchableOpacity>
+          </View>
+
           {/* FOOTER LINKS */}
           <View style={styles.divider} />
 
           <TouchableOpacity
             style={styles.linkContainer}
-            onPress={() => router.push(ROUTES.registerMitra)}
-          >
-            <Text style={styles.linkText}>
-              Punya bengkel tapi belum jadi mitra?{" "}
-              <Text style={styles.highlightText}>Daftar Kemitraan</Text>
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.linkContainer, { marginTop: 12 }]}
             onPress={() => router.push(ROUTES.register)}
           >
             <Text style={styles.linkText}>
@@ -290,6 +281,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingBottom: 40,
+    flexGrow: 1,
   },
   header: {
     paddingVertical: 16,
@@ -345,39 +337,6 @@ const styles = StyleSheet.create({
     color: "#a1a1aa",
     fontSize: 13,
     lineHeight: 18,
-    marginBottom: 20,
-  },
-  featureList: {
-    gap: 14,
-    marginBottom: 20,
-  },
-  featureItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-  },
-  featureIconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: "#18181b",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  featureTextGroup: {
-    flex: 1,
-  },
-  featureTitle: {
-    color: "#e4e4e7",
-    fontSize: 13,
-    fontWeight: "bold",
-  },
-  featureDesc: {
-    color: "#71717a",
-    fontSize: 11,
-    marginTop: 2,
   },
   formCard: {
     backgroundColor: "rgba(9, 9, 11, 0.9)",
@@ -447,6 +406,57 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
+
+  // DIVIDER ("atau lanjutkan dengan")
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    marginTop: 20,
+    marginBottom: 14,
+    gap: 10,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "rgba(82,82,91,0.6)",
+  },
+  dividerText: {
+    color: "#a1a1aa",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+
+  // SOCIAL LOGIN BUTTONS (DUMMY)
+  socialRow: {
+    flexDirection: "row",
+    width: "100%",
+    gap: 12,
+  },
+  socialButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#fff",
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  socialIcon: {
+    width: 16,
+    height: 16,
+  },
+  socialIconLetter: {
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  socialButtonText: {
+    color: "#18181b",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+
   divider: {
     height: 1,
     backgroundColor: "#27272a",

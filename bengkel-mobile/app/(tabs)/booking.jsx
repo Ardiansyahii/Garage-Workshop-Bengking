@@ -10,9 +10,10 @@ import {
   SafeAreaView,
   StatusBar,
   StyleSheet,
+  Modal,
   Platform,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   Wrench,
@@ -25,6 +26,8 @@ import {
   ChevronRight,
   Briefcase,
   CheckCircle2,
+  X,
+  Tag,
 } from "lucide-react-native";
 
 // Samakan dengan API_URL di Login/Register/Verify/Dashboard screen kamu
@@ -35,6 +38,12 @@ const API_URL = Platform.select({
 });
 
 const DAYS = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+
+// Helper format harga ke Rupiah
+const formatRupiah = (value) => {
+  const number = Number(value) || 0;
+  return `Rp${number.toLocaleString("id-ID")}`;
+};
 
 // API Helper (sama pola dengan dashboard.jsx)
 const fetchWithAuth = async (url, options = {}) => {
@@ -50,6 +59,9 @@ const fetchWithAuth = async (url, options = {}) => {
 
 export default function BookingScreen() {
   const router = useRouter();
+  // Params dikirim dari Dashboard saat user sudah pilih bengkel + layanan lewat modal
+  const params = useLocalSearchParams();
+
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,6 +74,13 @@ export default function BookingScreen() {
   // State Pemilihan
   const [selectedBengkel, setSelectedBengkel] = useState(null);
 
+  // Flag: apakah booking ini datang langsung dari Dashboard (bengkel+layanan sudah fix)
+  const [isPrefilled, setIsPrefilled] = useState(false);
+
+  // State Konfirmasi Layanan (muncul sebelum lanjut ke form, HANYA untuk alur pilih manual)
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [pendingService, setPendingService] = useState(null);
+
   // State Form
   const [formData, setFormData] = useState({
     vehicle_name: "",
@@ -72,7 +91,25 @@ export default function BookingScreen() {
     booking_time: "",
   });
 
-  // 1. Cek Sesi & Ambil Daftar Bengkel
+  // Helper: ambil layanan & jadwal milik sebuah bengkel
+  const loadServicesAndSchedules = async (bengkelId) => {
+    try {
+      const [serviceData, scheduleData] = await Promise.all([
+        fetchWithAuth(`/api/services?bengkel_id=${bengkelId}`),
+        fetchWithAuth(`/api/schedules/${bengkelId}`),
+      ]);
+      const serviceList = serviceData?.success ? serviceData.data : [];
+      setServices(serviceList);
+      setSchedules(scheduleData?.success ? scheduleData.data : []);
+      return serviceList;
+    } catch (err) {
+      setServices([]);
+      setSchedules([]);
+      return [];
+    }
+  };
+
+  // 1. Cek Sesi & Ambil Daftar Bengkel (+ auto-prefill jika datang dari Dashboard)
   useEffect(() => {
     const init = async () => {
       const session =
@@ -92,7 +129,41 @@ export default function BookingScreen() {
 
       try {
         const data = await fetchWithAuth(`/api/bengkels`);
-        if (data?.success) setBengkels(data.data || []);
+        const bengkelList = data?.success ? data.data || [] : [];
+        setBengkels(bengkelList);
+
+        // ===== AUTO-PREFILL: datang dari card bengkel/layanan di Dashboard =====
+        if (params?.bengkel_id) {
+          const matchedBengkel =
+            bengkelList.find(
+              (b) => String(b.id) === String(params.bengkel_id)
+            ) || {
+              id: params.bengkel_id,
+              name: params.bengkel_name || "Bengkel Terpilih",
+              address: "",
+              phone: "",
+            };
+
+          setSelectedBengkel(matchedBengkel);
+
+          const serviceList = await loadServicesAndSchedules(matchedBengkel.id);
+
+          if (params?.service_id) {
+            const matchedService = serviceList.find(
+              (s) => String(s.id) === String(params.service_id)
+            );
+
+            setFormData((prev) => ({
+              ...prev,
+              service_id: matchedService ? matchedService.id : params.service_id,
+              service_name: matchedService
+                ? matchedService.service_name
+                : params.service_name || "",
+            }));
+
+            setIsPrefilled(true);
+          }
+        }
       } catch (err) {
         // ignore
       } finally {
@@ -103,9 +174,10 @@ export default function BookingScreen() {
     init();
   }, []);
 
-  // 2. Handler Saat Bengkel Dipilih
+  // 2. Handler Saat Bengkel Dipilih (alur manual, tanpa params)
   const handleSelectBengkel = async (bengkel) => {
     setSelectedBengkel(bengkel);
+    setIsPrefilled(false);
     setFormData((prev) => ({
       ...prev,
       service_id: "",
@@ -114,22 +186,13 @@ export default function BookingScreen() {
       booking_time: "",
     }));
 
-    try {
-      const [serviceData, scheduleData] = await Promise.all([
-        fetchWithAuth(`/api/services?bengkel_id=${bengkel.id}`),
-        fetchWithAuth(`/api/schedules/${bengkel.id}`),
-      ]);
-      setServices(serviceData?.success ? serviceData.data : []);
-      setSchedules(scheduleData?.success ? scheduleData.data : []);
-    } catch (err) {
-      setServices([]);
-      setSchedules([]);
-    }
+    await loadServicesAndSchedules(bengkel.id);
   };
 
   // 3. Kembali ke Daftar Bengkel
   const handleBackToBengkels = () => {
     setSelectedBengkel(null);
+    setIsPrefilled(false);
     setServices([]);
     setSchedules([]);
     setFormData({
@@ -140,6 +203,35 @@ export default function BookingScreen() {
       booking_date: "",
       booking_time: "",
     });
+  };
+
+  // 3b. Saat kartu layanan ditekan -> buka modal konfirmasi dulu (bukan langsung pilih)
+  const handlePressService = (service) => {
+    setPendingService(service);
+    setConfirmVisible(true);
+  };
+
+  const handleCancelConfirm = () => {
+    setConfirmVisible(false);
+    setPendingService(null);
+  };
+
+  // Setelah user menekan "Lanjutkan" di modal konfirmasi -> baru layanan resmi terpilih
+  const handleConfirmService = () => {
+    if (!pendingService) return;
+    setFormData((prev) => ({
+      ...prev,
+      service_id: pendingService.id,
+      service_name: pendingService.service_name,
+    }));
+    setConfirmVisible(false);
+    setPendingService(null);
+  };
+
+  // Ganti layanan meski sudah datang dari Dashboard (opsional, kalau user berubah pikiran)
+  const handleChangeService = (service) => {
+    setIsPrefilled(false);
+    handlePressService(service);
   };
 
   // 4. Validasi Tanggal (Cek Hari Libur) — dipanggil saat format tanggal sudah lengkap (YYYY-MM-DD)
@@ -319,187 +411,268 @@ export default function BookingScreen() {
             </View>
           </View>
         ) : (
-          /* ============ STEP 2: PILIH LAYANAN + FORM ============ */
+          /* ============ STEP 2: LAYANAN + FORM ============ */
           <View>
             <Text style={[styles.title, { color: "#ef4444" }]}>
               {selectedBengkel.name}
             </Text>
-            <View style={styles.bengkelAddressRow}>
-              <MapPin size={14} color="#71717a" />
-              <Text style={styles.subtitle}>{selectedBengkel.address}</Text>
-            </View>
-
-            <Text style={styles.sectionLabel}>Pilih Layanan Servis</Text>
-
-            {services.length === 0 ? (
-              <View style={styles.emptyBox}>
-                <Text style={styles.emptyBoxText}>
-                  Bengkel ini belum mendaftarkan layanannya.
-                </Text>
-              </View>
-            ) : (
-              <View style={{ gap: 10, marginBottom: 24 }}>
-                {services.map((service) => {
-                  const isActive = formData.service_id === service.id;
-                  return (
-                    <TouchableOpacity
-                      key={service.id}
-                      style={[styles.serviceCard, isActive && styles.serviceCardActive]}
-                      onPress={() =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          service_id: service.id,
-                          service_name: service.service_name,
-                        }))
-                      }
-                    >
-                      <View style={{ flex: 1 }}>
-                        <View style={styles.serviceNameRow}>
-                          {isActive && <CheckCircle2 size={14} color="#ef4444" />}
-                          <Text style={styles.serviceName}>{service.service_name}</Text>
-                        </View>
-                        <Text style={styles.serviceDesc}>
-                          {service.description || "Perawatan standar"}
-                        </Text>
-                      </View>
-                      <Text style={styles.servicePrice}>{service.price}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
+            {!!selectedBengkel.address && (
+              <View style={styles.bengkelAddressRow}>
+                <MapPin size={14} color="#71717a" />
+                <Text style={styles.subtitle}>{selectedBengkel.address}</Text>
               </View>
             )}
 
-            {/* FORM CARD */}
-            <View style={styles.formCard}>
-              <Text style={styles.formTitle}>Form Reservasi</Text>
-              <Text style={styles.formSubtitle}>Atur kendaraan dan jadwal pengerjaan.</Text>
-
-              {/* Indikator Bengkel & Layanan Terpilih */}
-              <View style={styles.summaryBox}>
-                <View style={styles.summaryRow}>
-                  <View style={styles.summaryLabelRow}>
-                    <Store size={13} color="#71717a" />
-                    <Text style={styles.summaryLabel}>Bengkel</Text>
+            {isPrefilled ? (
+              /* ===== Layanan sudah dipilih dari Dashboard: tampilkan ringkas, tidak perlu pilih ulang ===== */
+              <View style={styles.prefilledServiceBox}>
+                <View style={styles.prefilledServiceRow}>
+                  <View style={styles.prefilledIconWrap}>
+                    <CheckCircle2 size={16} color="#34d399" />
                   </View>
-                  <Text style={styles.summaryValue}>{selectedBengkel.name}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.prefilledLabel}>Layanan Terpilih</Text>
+                    <Text style={styles.prefilledServiceName}>
+                      {formData.service_name}
+                    </Text>
+                  </View>
                 </View>
-                <View style={[styles.summaryRow, styles.summaryRowBorder]}>
-                  <View style={styles.summaryLabelRow}>
-                    <Briefcase size={13} color="#71717a" />
-                    <Text style={styles.summaryLabel}>Layanan</Text>
-                  </View>
-                  <Text
-                    style={[
-                      styles.summaryValue,
-                      !formData.service_name && styles.summaryValuePending,
-                    ]}
+
+                {services.length > 0 && (
+                  <TouchableOpacity
+                    style={styles.prefilledChangeBtn}
+                    onPress={() => setIsPrefilled(false)}
                   >
-                    {formData.service_name || "Pilih di atas..."}
-                  </Text>
-                </View>
+                    <Text style={styles.prefilledChangeBtnText}>Ganti Layanan</Text>
+                  </TouchableOpacity>
+                )}
               </View>
+            ) : (
+              <>
+                <Text style={styles.sectionLabel}>Pilih Layanan Servis</Text>
 
-              {/* NAMA KENDARAAN */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>NAMA KENDARAAN</Text>
-                <View style={styles.inputWrapper}>
-                  <Car size={16} color="#71717a" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="Cth: Honda NMAX"
-                    placeholderTextColor="#52525b"
-                    value={formData.vehicle_name}
-                    editable={!!formData.service_id}
-                    onChangeText={(v) =>
-                      setFormData((prev) => ({ ...prev, vehicle_name: v }))
-                    }
-                  />
+                {services.length === 0 ? (
+                  <View style={styles.emptyBox}>
+                    <Text style={styles.emptyBoxText}>
+                      Bengkel ini belum mendaftarkan layanannya.
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={{ gap: 10, marginBottom: 24 }}>
+                    {services.map((service) => {
+                      const isActive = formData.service_id === service.id;
+                      return (
+                        <TouchableOpacity
+                          key={service.id}
+                          style={[styles.serviceCard, isActive && styles.serviceCardActive]}
+                          onPress={() => handleChangeService(service)}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <View style={styles.serviceNameRow}>
+                              {isActive && <CheckCircle2 size={14} color="#ef4444" />}
+                              <Text style={styles.serviceName}>{service.service_name}</Text>
+                            </View>
+                            <Text style={styles.serviceDesc}>
+                              {service.description || "Perawatan standar"}
+                            </Text>
+                          </View>
+                          <Text style={styles.servicePrice}>{service.price}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+              </>
+            )}
+
+            {/* FORM CARD - tampil setelah layanan tersedia (dari prefill atau konfirmasi manual) */}
+            {!!formData.service_id && (
+              <View style={styles.formCard}>
+                <Text style={styles.formTitle}>Form Reservasi</Text>
+                <Text style={styles.formSubtitle}>Atur kendaraan dan jadwal pengerjaan.</Text>
+
+                {/* Indikator Bengkel & Layanan Terpilih */}
+                <View style={styles.summaryBox}>
+                  <View style={styles.summaryRow}>
+                    <View style={styles.summaryLabelRow}>
+                      <Store size={13} color="#71717a" />
+                      <Text style={styles.summaryLabel}>Bengkel</Text>
+                    </View>
+                    <Text style={styles.summaryValue}>{selectedBengkel.name}</Text>
+                  </View>
+                  <View style={[styles.summaryRow, styles.summaryRowBorder]}>
+                    <View style={styles.summaryLabelRow}>
+                      <Briefcase size={13} color="#71717a" />
+                      <Text style={styles.summaryLabel}>Layanan</Text>
+                    </View>
+                    <Text
+                      style={[
+                        styles.summaryValue,
+                        !formData.service_name && styles.summaryValuePending,
+                      ]}
+                    >
+                      {formData.service_name || "Pilih di atas..."}
+                    </Text>
+                  </View>
                 </View>
-              </View>
 
-              {/* PLAT NOMOR */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>PLAT NOMOR</Text>
-                <View style={styles.inputWrapper}>
-                  <TextInput
-                    style={[styles.textInput, { paddingLeft: 12 }]}
-                    placeholder="B 1234 XYZ"
-                    placeholderTextColor="#52525b"
-                    autoCapitalize="characters"
-                    value={formData.license_plate}
-                    editable={!!formData.service_id}
-                    onChangeText={(v) =>
-                      setFormData((prev) => ({ ...prev, license_plate: v }))
-                    }
-                  />
+                {/* NAMA KENDARAAN */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>NAMA KENDARAAN</Text>
+                  <View style={styles.inputWrapper}>
+                    <Car size={16} color="#71717a" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="Cth: Honda NMAX"
+                      placeholderTextColor="#52525b"
+                      value={formData.vehicle_name}
+                      onChangeText={(v) =>
+                        setFormData((prev) => ({ ...prev, vehicle_name: v }))
+                      }
+                    />
+                  </View>
                 </View>
-              </View>
 
-              {/* TANGGAL SERVIS */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>TANGGAL SERVIS (YYYY-MM-DD)</Text>
-                <View style={styles.inputWrapper}>
-                  <Calendar size={16} color="#71717a" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="2026-03-25"
-                    placeholderTextColor="#52525b"
-                    value={formData.booking_date}
-                    editable={!!formData.service_id}
-                    maxLength={10}
-                    onChangeText={handleDateChange}
-                  />
+                {/* PLAT NOMOR */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>PLAT NOMOR</Text>
+                  <View style={styles.inputWrapper}>
+                    <TextInput
+                      style={[styles.textInput, { paddingLeft: 12 }]}
+                      placeholder="B 1234 XYZ"
+                      placeholderTextColor="#52525b"
+                      autoCapitalize="characters"
+                      value={formData.license_plate}
+                      onChangeText={(v) =>
+                        setFormData((prev) => ({ ...prev, license_plate: v }))
+                      }
+                    />
+                  </View>
                 </View>
-              </View>
 
-              {/* JAM SERVIS */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>JAM SERVIS (HH:MM)</Text>
-                <View style={styles.inputWrapper}>
-                  <Clock size={16} color="#71717a" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="10:00"
-                    placeholderTextColor="#52525b"
-                    value={formData.booking_time}
-                    editable={!!formData.booking_date}
-                    maxLength={5}
-                    onChangeText={handleTimeChange}
-                  />
+                {/* TANGGAL SERVIS */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>TANGGAL SERVIS (YYYY-MM-DD)</Text>
+                  <View style={styles.inputWrapper}>
+                    <Calendar size={16} color="#71717a" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="2026-03-25"
+                      placeholderTextColor="#52525b"
+                      value={formData.booking_date}
+                      maxLength={10}
+                      onChangeText={handleDateChange}
+                    />
+                  </View>
                 </View>
-              </View>
 
-              {/* SUBMIT */}
-              <TouchableOpacity
-                style={[
-                  styles.submitBtn,
-                  (!selectedBengkel ||
+                {/* JAM SERVIS */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>JAM SERVIS (HH:MM)</Text>
+                  <View style={styles.inputWrapper}>
+                    <Clock size={16} color="#71717a" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="10:00"
+                      placeholderTextColor="#52525b"
+                      value={formData.booking_time}
+                      editable={!!formData.booking_date}
+                      maxLength={5}
+                      onChangeText={handleTimeChange}
+                    />
+                  </View>
+                </View>
+
+                {/* SUBMIT */}
+                <TouchableOpacity
+                  style={[
+                    styles.submitBtn,
+                    (!selectedBengkel ||
+                      !formData.service_id ||
+                      !formData.booking_time ||
+                      isSubmitting) &&
+                      styles.submitBtnDisabled,
+                  ]}
+                  onPress={handleSubmit}
+                  disabled={
+                    !selectedBengkel ||
                     !formData.service_id ||
                     !formData.booking_time ||
-                    isSubmitting) &&
-                    styles.submitBtnDisabled,
-                ]}
-                onPress={handleSubmit}
-                disabled={
-                  !selectedBengkel ||
-                  !formData.service_id ||
-                  !formData.booking_time ||
-                  isSubmitting
-                }
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <>
-                    <CheckCircle2 size={16} color="#FFFFFF" />
-                    <Text style={styles.submitBtnText}>Konfirmasi Reservasi</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
+                    isSubmitting
+                  }
+                >
+                  {isSubmitting ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <CheckCircle2 size={16} color="#FFFFFF" />
+                      <Text style={styles.submitBtnText}>Konfirmasi Reservasi</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
+
+      {/* ================= MODAL: KONFIRMASI LAYANAN (harga & estimasi waktu) — hanya alur pilih manual ================= */}
+      <Modal
+        visible={confirmVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCancelConfirm}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmModalContent}>
+            <View style={styles.confirmModalHeader}>
+              <View style={styles.confirmModalIconWrap}>
+                <Tag size={18} color="#dc2626" />
+              </View>
+              <Text style={styles.confirmModalTitle} numberOfLines={2}>
+                {pendingService?.service_name}
+              </Text>
+              <TouchableOpacity onPress={handleCancelConfirm} style={styles.confirmModalCloseBtn}>
+                <X size={16} color="#a1a1aa" />
+              </TouchableOpacity>
+            </View>
+
+            {!!pendingService?.description && (
+              <Text style={styles.confirmModalDesc}>{pendingService.description}</Text>
+            )}
+
+            <View style={styles.confirmDetailBox}>
+              <View style={styles.confirmDetailRow}>
+                <View style={styles.confirmDetailLabelRow}>
+                  <Tag size={13} color="#71717a" />
+                  <Text style={styles.confirmDetailLabel}>Harga</Text>
+                </View>
+                <Text style={styles.confirmDetailValuePrice}>
+                  {formatRupiah(pendingService?.price)}
+                </Text>
+              </View>
+              <View style={[styles.confirmDetailRow, styles.confirmDetailRowBorder]}>
+                <View style={styles.confirmDetailLabelRow}>
+                  <Clock size={13} color="#71717a" />
+                  <Text style={styles.confirmDetailLabel}>Estimasi Waktu</Text>
+                </View>
+                <Text style={styles.confirmDetailValue}>
+                  {pendingService?.duration || "± 30–60 menit (tergantung kondisi kendaraan)"}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.confirmModalActions}>
+              <TouchableOpacity style={styles.confirmModalCancelBtn} onPress={handleCancelConfirm}>
+                <Text style={styles.confirmModalCancelText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.confirmModalOkBtn} onPress={handleConfirmService}>
+                <Text style={styles.confirmModalOkText}>Lanjutkan</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -658,6 +831,59 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     fontFamily: "monospace",
   },
+
+  // BOX: Layanan sudah dipilih dari Dashboard (skip pemilihan ulang)
+  prefilledServiceBox: {
+    backgroundColor: "rgba(16, 185, 129, 0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(52, 211, 153, 0.3)",
+    borderRadius: 16,
+    padding: 14,
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  prefilledServiceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  prefilledIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: "rgba(52, 211, 153, 0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  prefilledLabel: {
+    color: "#a1a1aa",
+    fontSize: 10,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  prefilledServiceName: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "900",
+    marginTop: 2,
+  },
+  prefilledChangeBtn: {
+    alignSelf: "flex-start",
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    backgroundColor: "#18181b",
+    borderWidth: 1,
+    borderColor: "#27272a",
+  },
+  prefilledChangeBtnText: {
+    color: "#a1a1aa",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+
   formCard: {
     backgroundColor: "rgba(9, 9, 11, 0.85)",
     borderWidth: 1,
@@ -759,5 +985,130 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "bold",
     fontSize: 13,
+  },
+
+  // ===== MODAL KONFIRMASI LAYANAN =====
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.8)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  confirmModalContent: {
+    width: "100%",
+    backgroundColor: "#09090b",
+    borderWidth: 1,
+    borderColor: "#27272a",
+    borderRadius: 20,
+    padding: 18,
+    gap: 14,
+  },
+  confirmModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  confirmModalIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "rgba(220, 38, 38, 0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(220, 38, 38, 0.3)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  confirmModalTitle: {
+    flex: 1,
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  confirmModalCloseBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    backgroundColor: "#18181b",
+    borderWidth: 1,
+    borderColor: "#27272a",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  confirmModalDesc: {
+    color: "#a1a1aa",
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  confirmDetailBox: {
+    backgroundColor: "rgba(24, 24, 27, 0.6)",
+    borderWidth: 1,
+    borderColor: "#27272a",
+    borderRadius: 14,
+    padding: 14,
+  },
+  confirmDetailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 6,
+  },
+  confirmDetailRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: "rgba(39, 39, 42, 0.6)",
+    marginTop: 4,
+  },
+  confirmDetailLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  confirmDetailLabel: {
+    color: "#71717a",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  confirmDetailValue: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "700",
+    flexShrink: 1,
+    textAlign: "right",
+    marginLeft: 12,
+  },
+  confirmDetailValuePrice: {
+    color: "#34d399",
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  confirmModalActions: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  confirmModalCancelBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 12,
+    backgroundColor: "#18181b",
+    borderWidth: 1,
+    borderColor: "#27272a",
+    alignItems: "center",
+  },
+  confirmModalCancelText: {
+    color: "#a1a1aa",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  confirmModalOkBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 12,
+    backgroundColor: "#dc2626",
+    alignItems: "center",
+  },
+  confirmModalOkText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "800",
   },
 });
