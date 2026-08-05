@@ -50,43 +50,44 @@ exports.getAllBookings = async (req, res, next) => {
 // ==========================================
 exports.createBooking = async (req, res, next) => {
   try {
-    const {
-      user_id,
-      bengkel_id,
-      vehicle_id,
-      service_id,
-      booking_date,
-      booking_time,
-    } = req.body;
+  const {
+  user_id,
+  bengkel_id,
+  service_id,
+  vehicle_name,
+  license_plate,
+  booking_date,
+  booking_time,
+} = req.body;
 
-    if (
-      !user_id ||
-      !bengkel_id ||
-      !vehicle_id ||
-      !service_id ||
-      !booking_date ||
-      !booking_time
-    ) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Semua data booking wajib diisi!" });
-    }
+// Simpan kendaraan
+const [vehicleResult] = await db.query(
+  `INSERT INTO vehicles (user_id, vehicle_name, license_plate)
+   VALUES (?, ?, ?)`,
+  [user_id, vehicle_name, license_plate]
+);
 
-    // Generate kode unik booking
-    const booking_code = "APEX-" + Math.floor(10000 + Math.random() * 90000);
+// Ambil ID kendaraan yang baru dibuat
+const vehicle_id = vehicleResult.insertId;
 
-    await db.query(
-      "INSERT INTO bookings (user_id, bengkel_id, vehicle_id, service_id, booking_date, booking_time, booking_code, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'Menunggu')",
-      [
-        user_id,
-        bengkel_id,
-        vehicle_id,
-        service_id,
-        booking_date,
-        booking_time,
-        booking_code,
-      ],
-    );
+// Generate kode booking
+const booking_code = "APEX-" + Math.floor(10000 + Math.random() * 90000);
+
+// Simpan booking
+await db.query(
+  `INSERT INTO bookings
+  (user_id, bengkel_id, vehicle_id, service_id, booking_date, booking_time, booking_code, status)
+   VALUES (?, ?, ?, ?, ?, ?, ?, 'Menunggu')`,
+  [
+    user_id,
+    bengkel_id,
+    vehicle_id,
+    service_id,
+    booking_date,
+    booking_time,
+    booking_code,
+  ]
+);
 
     // Ambil data nomor WhatsApp pelanggan, nama bengkel, dan admin bengkel untuk dikirimi pesan WA
     const [userData] = await db.query(
