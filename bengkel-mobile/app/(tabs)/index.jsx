@@ -29,7 +29,7 @@ import {
 // Di React Native TIDAK ADA process.env.NEXT_PUBLIC_API_URL bawaan Next.js,
 // jadi definisikan langsung di sini atau lewat file config/env terpisah
 // (misal pakai react-native-dotenv / expo-constants).
-const API_URL = "http://192.168.1.16:5000";
+const API_URL = "http://10.51.2.60:5000";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 

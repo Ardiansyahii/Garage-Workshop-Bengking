@@ -9,7 +9,6 @@ import {
   Alert,
   ActivityIndicator,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   KeyboardAvoidingView,
   Platform,
@@ -17,6 +16,8 @@ import {
   Dimensions,
   BackHandler,
 } from "react-native";
+
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
   Wrench,
@@ -41,8 +42,8 @@ const FORM_PAGE_WIDTH = SCREEN_WIDTH - 40;
 // Configure URL API dynamically based on environment
 const API_URL = Platform.select({
   web: "http://localhost:5000",
-  android: "http://10.0.2.2:5000", // khusus Emulator Android
-  default: "http://192.168.1.16:5000", // Ganti dengan IP Wi-Fi laptop kamu jika pakai HP Fisik (Expo Go)
+  android: "http://10.51.2.60:5000", // khusus Emulator Android
+  default: "http://10.51.2.60:5000", // Ganti dengan IP Wi-Fi laptop kamu jika pakai HP Fisik (Expo Go)
 });
 
 const ROUTES = {

@@ -6,18 +6,18 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Modal,
   Image,
   Platform,
 } from "react-native";
+
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   Wrench,
-  PlusCircle,
   LogOut,
   MapPin,
   Phone,
@@ -26,14 +26,14 @@ import {
   X,
   Tag,
   Clock,
-  ClipboardList,
 } from "lucide-react-native";
+import BottomNavBar from "../../components/Bottomnavbar"; // sesuaikan path relatif ini dengan lokasi folder components kamu
 
 // Samakan dengan API_URL di Login/Register/Verify screen kamu
 const API_URL = Platform.select({
   web: "http://localhost:5000",
-  android: "http://10.0.2.2:5000", // khusus Emulator Android
-  default: "http://192.168.1.16:5000", // Ganti dengan IP Wi-Fi laptop kamu jika pakai HP Fisik (Expo Go)
+  android: "http://10.51.2.60:5000", // khusus Emulator Android
+  default: "http://10.51.2.60:5000", // Ganti dengan IP Wi-Fi laptop kamu jika pakai HP Fisik (Expo Go)
 });
 
 // API Helper pengganti fetchWithAuth
@@ -226,14 +226,6 @@ export default function UserDashboardScreen() {
         </View>
 
         <View style={styles.headerActions}>
-          <TouchableOpacity
-            onPress={() => router.push("/booking")}
-            style={styles.btnPrimary}
-          >
-            <PlusCircle size={14} color="#fff" />
-            <Text style={styles.btnPrimaryText}>Booking</Text>
-          </TouchableOpacity>
-
           <TouchableOpacity onPress={handleLogout} style={styles.btnLogout}>
             <LogOut size={14} color="#d4d4d8" />
           </TouchableOpacity>
@@ -246,24 +238,6 @@ export default function UserDashboardScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* ================= CARD NAVIGASI: RIWAYAT SERVIS (HALAMAN TERPISAH) ================= */}
-        <TouchableOpacity
-          style={styles.riwayatNavCard}
-          activeOpacity={0.85}
-          onPress={() => router.push("/riwayat-servis")}
-        >
-          <View style={styles.riwayatNavIconWrap}>
-            <ClipboardList size={20} color="#dc2626" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.riwayatNavTitle}>Riwayat Servis Saya</Text>
-            <Text style={styles.riwayatNavSubtitle}>
-              Cek status booking, reschedule, atau batalkan servis
-            </Text>
-          </View>
-          <ChevronRight size={18} color="#a1a1aa" />
-        </TouchableOpacity>
-
         {/* ================= SECTION: BENGKEL PARTNER (STORE CARDS ala E-COMMERCE) ================= */}
         <View style={styles.sectionHeaderRow}>
           <View>
@@ -491,6 +465,9 @@ export default function UserDashboardScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* ================= BOTTOM NAVIGATION BAR (Home / Booking / Riwayat) ================= */}
+      <BottomNavBar activeTab="home" />
     </SafeAreaView>
   );
 }
@@ -560,20 +537,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  btnPrimary: {
-    backgroundColor: "#dc2626",
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  btnPrimaryText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "700",
-  },
   btnLogout: {
     backgroundColor: "#18181b",
     borderWidth: 1,
@@ -586,40 +549,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 40,
-  },
-
-  // NAV CARD -> RIWAYAT SERVIS (halaman terpisah)
-  riwayatNavCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: "rgba(9, 9, 11, 0.85)",
-    borderWidth: 1,
-    borderColor: "#18181b",
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 24,
-  },
-  riwayatNavIconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: "rgba(220, 38, 38, 0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(220, 38, 38, 0.3)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  riwayatNavTitle: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "900",
-  },
-  riwayatNavSubtitle: {
-    color: "#a1a1aa",
-    fontSize: 11,
-    marginTop: 2,
+    paddingBottom: 120,
   },
 
   // SECTION HEADERS

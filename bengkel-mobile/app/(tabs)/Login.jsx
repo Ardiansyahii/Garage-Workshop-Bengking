@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   StatusBar,
   Alert,
   ActivityIndicator,
@@ -14,6 +13,8 @@ import {
   Platform,
   Image,
 } from "react-native";
+
+import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import {
@@ -29,8 +30,8 @@ const { width } = Dimensions.get("window");
 // Samakan dengan API_URL di RegisterScreen/VerifyScreen kamu
 const API_URL = Platform.select({
   web: "http://localhost:5000",
-  android: "http://10.0.2.2:5000", // khusus Emulator Android
-  default: "http://192.168.1.16:5000", // Ganti dengan IP Wi-Fi laptop kamu jika pakai HP Fisik (Expo Go)
+  android: "http://10.51.2.60:5000", // khusus Emulator Android
+  default: "http://10.51.2.60:5000", // Ganti dengan IP Wi-Fi laptop kamu jika pakai HP Fisik (Expo Go)
 });
 
 // ====================================================================
