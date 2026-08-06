@@ -159,21 +159,31 @@ export default function UserDashboardScreen() {
 
   // Lanjut booking dengan bengkel & layanan yang sudah dikonfirmasi
   const handleConfirmService = () => {
-    if (!pendingService) return;
-    setConfirmVisible(false);
-    setBengkelModalVisible(false);
+  if (!pendingService) return;
+
+  const bengkelId = selectedBengkel?.id;
+  const bengkelName = selectedBengkel?.name;
+  const serviceId = pendingService?.id;
+  const serviceName = pendingService?.service_name;
+
+  // Tutup semua modal dulu
+  setConfirmVisible(false);
+  setBengkelModalVisible(false);
+  setPendingService(null);
+
+  // Beri jeda sedikit supaya animasi modal selesai dulu sebelum pindah halaman
+  setTimeout(() => {
     router.push({
       pathname: "/booking",
       params: {
-        bengkel_id: selectedBengkel?.id,
-        bengkel_name: selectedBengkel?.name,
-        service_id: pendingService?.id,
-        service_name: pendingService?.service_name,
+        bengkel_id: bengkelId,
+        bengkel_name: bengkelName,
+        service_id: serviceId,
+        service_name: serviceName,
       },
     });
-    setPendingService(null);
-  };
-
+  }, 150);
+};  
   const handleLogout = () => {
     Alert.alert("Keluar Akun", "Apakah kamu yakin ingin keluar dari sesi ini?", [
       { text: "Batal", style: "cancel" },
