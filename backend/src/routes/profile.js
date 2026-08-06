@@ -3,12 +3,11 @@ const router = express.Router();
 const profileController = require("../controllers/profileController");
 const { verifyToken } = require("../middlewares/auth");
 
-// ==========================================
-// ROUTES UNTUK PROFIL BENGKEL & ADMIN (DILINDUNGI JWT)
-// ==========================================
-
-// GET /api/profile -> Ambil data admin dan bengkel miliknya
+// GET /api/profile -> Ambil profil berdasarkan role login (Admin/Bengkel atau User/Pelanggan)
 router.get("/", verifyToken, profileController.getMyProfile);
+
+// PUT /api/profile/user -> Update profil user / pelanggan
+router.put("/user", verifyToken, profileController.updateUserProfile);
 
 // PUT /api/profile/admin -> Update profil si admin
 router.put("/admin", verifyToken, profileController.updateAdminProfile);
