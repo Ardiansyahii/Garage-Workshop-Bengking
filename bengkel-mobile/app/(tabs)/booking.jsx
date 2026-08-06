@@ -31,6 +31,8 @@ import {
   Tag,
 } from "lucide-react-native";
 import BottomNavBar from "../../components/Bottomnavbar";
+import { useFocusEffect } from "expo-router";
+import { useCallback } from "react";
 // Samakan dengan API_URL di Login/Register/Verify/Dashboard screen kamu
 const API_URL = Platform.select({
   web: "http://localhost:5000",
@@ -111,7 +113,8 @@ export default function BookingScreen() {
   };
 
   // 1. Cek Sesi & Ambil Daftar Bengkel (+ auto-prefill jika datang dari Dashboard)
-  useEffect(() => {
+ useFocusEffect(
+  useCallback(() => {
     const init = async () => {
       const session =
         (await AsyncStorage.getItem("user_session")) ||
@@ -127,13 +130,13 @@ export default function BookingScreen() {
       }
 
       setUser(JSON.parse(session));
+      setIsLoading(true);
 
       try {
         const data = await fetchWithAuth(`/api/bengkels`);
         const bengkelList = data?.success ? data.data || [] : [];
         setBengkels(bengkelList);
 
-        // ===== AUTO-PREFILL: datang dari card bengkel/layanan di Dashboard =====
         if (params?.bengkel_id) {
           const matchedBengkel =
             bengkelList.find(
@@ -164,6 +167,10 @@ export default function BookingScreen() {
 
             setIsPrefilled(true);
           }
+        } else {
+          // Reset ke step "pilih bengkel" kalau tidak ada params (masuk manual lewat tab)
+          setSelectedBengkel(null);
+          setIsPrefilled(false);
         }
       } catch (err) {
         // ignore
@@ -173,7 +180,8 @@ export default function BookingScreen() {
     };
 
     init();
-  }, []);
+  }, [params?.bengkel_id, params?.service_id])
+);
 
   // 2. Handler Saat Bengkel Dipilih (alur manual, tanpa params)
   const handleSelectBengkel = async (bengkel) => {
@@ -363,15 +371,13 @@ export default function BookingScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         {/* HEADER / BACK */}
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => (selectedBengkel ? handleBackToBengkels() : router.back())}
-        >
-          <ArrowLeft size={14} color="#a1a1aa" />
-          <Text style={styles.backBtnText}>
-            {selectedBengkel ? "Ganti Bengkel" : "Kembali"}
-          </Text>
-        </TouchableOpacity>
+       <TouchableOpacity
+        style={styles.backBtn}
+        onPress={() => router.replace("/dashboard")}
+      >
+        <ArrowLeft size={14} color="#a1a1aa" />
+        <Text style={styles.backBtnText}>Kembali</Text>
+      </TouchableOpacity>
 
         {!selectedBengkel ? (
           /* ============ STEP 1: PILIH BENGKEL ============ */
