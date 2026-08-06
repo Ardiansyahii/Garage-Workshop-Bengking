@@ -211,6 +211,7 @@ export default function BookingPage() {
       booking_date: formData.booking_date,
       booking_time: formData.booking_time,
     };
+    
 
     try {
       const data = await fetchWithAuth(`/api/bookings`, {

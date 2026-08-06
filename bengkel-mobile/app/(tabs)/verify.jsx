@@ -9,20 +9,22 @@ import {
   Alert,
   ActivityIndicator,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   KeyboardAvoidingView,
   Platform,
   Animated,
+  BackHandler,
 } from "react-native";
+
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Wrench, ArrowLeft, ArrowRight } from "lucide-react-native";
 
 // Samakan dengan API_URL di RegisterScreen/LoginScreen kamu
 const API_URL = Platform.select({
   web: "http://localhost:5000",
-  android: "http://10.0.2.2:5000", // khusus Emulator Android
-  default: "http://192.168.1.16:5000", // Ganti dengan IP Wi-Fi laptop kamu jika pakai HP Fisik (Expo Go)
+  android: "http://10.51.2.60:5000", // khusus Emulator Android
+  default: "http://10.51.2.60:5000", // Ganti dengan IP Wi-Fi laptop kamu jika pakai HP Fisik (Expo Go)
 });
 
 // ====================================================================
@@ -63,6 +65,26 @@ export default function VerifyScreen() {
       otpRefs[index - 1].current?.focus();
     }
   };
+
+  // ==========================================
+  // TOMBOL BACK UNIVERSAL — dipakai floating
+  // arrow di layar maupun hardware back Android
+  // ==========================================
+  const handleBackPress = () => {
+    router.push(ROUTES.register);
+    return true; // sudah ditangani, cegah default keluar app
+  };
+
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      handleBackPress
+    );
+
+    return () => subscription.remove();
+  }, []);
 
   // Fade-in animation (pengganti framer-motion / animasi masuk halaman)
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -145,14 +167,8 @@ export default function VerifyScreen() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
           >
-            {/* TOMBOL KEMBALI */}
-            <TouchableOpacity
-              style={styles.backBtn}
-              onPress={() => router.push(ROUTES.register)}
-            >
-              <ArrowLeft size={14} color="#a1a1aa" />
-              <Text style={styles.backBtnText}>Kembali</Text>
-            </TouchableOpacity>
+            {/* Spacer biar konten tidak tertutup floating back button */}
+            <View style={styles.topSpacer} />
 
             {/* HEADER LOGO */}
             <Animated.View
@@ -255,6 +271,17 @@ export default function VerifyScreen() {
               © {new Date().getFullYear()} BENGKELKU. All rights reserved.
             </Text>
           </ScrollView>
+
+          {/* FLOATING ARROW BACK — selalu tampil, aman dari notch/status bar
+              di semua device (iOS, Android, web). Hardware back Android
+              juga dipetakan ke fungsi yang sama lewat handleBackPress(). */}
+          <TouchableOpacity
+            style={styles.floatingBackBtn}
+            onPress={handleBackPress}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <ArrowLeft size={20} color="#FFFFFF" />
+          </TouchableOpacity>
         </ImageBackground>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -277,24 +304,31 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 40,
   },
-  backBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    gap: 8,
-    backgroundColor: "rgba(24, 24, 27, 0.6)",
+
+  // FLOATING ARROW BACK (fixed, tidak ikut scroll, aman di semua device)
+  floatingBackBtn: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 54 : 20,
+    left: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(24, 24, 27, 0.85)",
     borderWidth: 1,
     borderColor: "#27272a",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginBottom: 24,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 50,
+    elevation: 6, // shadow Android
+    shadowColor: "#000", // shadow iOS
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
   },
-  backBtnText: {
-    color: "#a1a1aa",
-    fontSize: 12,
-    fontWeight: "600",
+  topSpacer: {
+    height: 44, // ruang kosong biar konten tidak tertutup floating back button
   },
+
   logoRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -334,6 +368,7 @@ const styles = StyleSheet.create({
     borderColor: "#27272a",
     borderRadius: 24,
     padding: 22,
+    overflow: "hidden", // cegah konten anak (mis. otpBoxRow) bocor keluar kartu di web
   },
   formTitle: {
     color: "#FFFFFF",
@@ -378,9 +413,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     gap: 10,
+    minWidth: 0, // penting di web: cegah row melebar melebihi induknya
   },
   otpBox: {
     flex: 1,
+    minWidth: 0, // penting di web: flex:1 pada <input> butuh ini agar bisa menyusut
     height: 56,
     backgroundColor: "rgba(24, 24, 27, 0.6)",
     borderWidth: 1.5,
@@ -389,6 +426,7 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 22,
     fontWeight: "900",
+    textAlign: "center",
   },
   otpBoxFilled: {
     borderColor: "#dc2626",

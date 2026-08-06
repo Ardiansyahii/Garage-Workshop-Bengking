@@ -15,8 +15,6 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   Wrench,
-  ShieldCheck,
-  Clock,
   ArrowRight,
   Star,
   ChevronRight,
@@ -31,14 +29,14 @@ import {
 // Di React Native TIDAK ADA process.env.NEXT_PUBLIC_API_URL bawaan Next.js,
 // jadi definisikan langsung di sini atau lewat file config/env terpisah
 // (misal pakai react-native-dotenv / expo-constants).
-const API_URL = "http://192.168.1.16:5000";
+const API_URL = "http://10.51.2.60:5000";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 // Ganti dengan path gambar lokal kamu, contoh:
 // const workshopBg = require("../assets/workshop-bg.png");
 // lalu pakai <Image source={workshopBg} ... />
-const WORKSHOP_BG_URI = "../../assets/banner-bg.png";
+const WORKSHOP_BG = require("../../assets/workshop-bg.png");
 
 export default function LandingScreen() {
   const router = useRouter();
@@ -100,6 +98,17 @@ export default function LandingScreen() {
     }
   };
 
+  // Dummy handler untuk login sosial (Google / Facebook).
+  // Ganti isi fungsi ini dengan integrasi OAuth asli nanti
+  // (misal expo-auth-session, firebase auth, dsb).
+  const handleSocialLogin = (provider) => {
+    Alert.alert(
+      `Masuk dengan ${provider}`,
+      `Ini masih tombol dummy untuk ${provider}. Integrasi OAuth belum terhubung ke backend.`,
+      [{ text: "Oke" }],
+    );
+  };
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -124,33 +133,20 @@ export default function LandingScreen() {
             BENGKEL<Text style={{ color: "#dc2626" }}>KU</Text>
           </Text>
         </View>
-
-        <View style={styles.headerActions}>
-          <TouchableOpacity onPress={() => router.push("/login")}>
-            <Text style={styles.headerLink}>Masuk</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.headerCta}
-            onPress={() => router.push("/register")}
-          >
-            <Text style={styles.headerCtaText}>Buat Akun</Text>
-            <ArrowRight size={14} color="#fff" />
-          </TouchableOpacity>
-        </View>
       </View>
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: 40, flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
       >
         {/* HERO SECTION */}
         <View style={styles.hero}>
           <Image
-            source={{ uri: WORKSHOP_BG_URI }}
-            style={StyleSheet.absoluteFill}
-            resizeMode="cover"
-          />
+          source={WORKSHOP_BG}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        />
           <View style={styles.heroOverlay} />
 
           <Animated.View
@@ -159,6 +155,7 @@ export default function LandingScreen() {
               transform: [{ translateY: slideAnim }],
               alignItems: "center",
               paddingHorizontal: 24,
+              width: "100%",
             }}
           >
             <View style={styles.badge}>
@@ -178,21 +175,53 @@ export default function LandingScreen() {
               dan pantau progres pengerjaan secara real-time.
             </Text>
 
+            {/* AUTH BUTTONS: Masuk & Daftar */}
             <View style={styles.heroButtons}>
               <TouchableOpacity
                 style={styles.primaryButton}
-                onPress={handleCtaClick}
+                onPress={() => router.push("/Register")}
               >
-                <Text style={styles.primaryButtonText}>Mulai Reservasi</Text>
+                <Text style={styles.primaryButtonText}>Daftar</Text>
                 <ArrowRight size={16} color="#fff" />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.secondaryButton}
-                onPress={() => router.push("/login")}
+                onPress={() => router.push("/Login")}
               >
-                <Text style={styles.secondaryButtonText}>
-                  Akses Dashboard
+                <Text style={styles.secondaryButtonText}>Masuk</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* DIVIDER */}
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>atau lanjutkan dengan</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* SOCIAL LOGIN (DUMMY) */}
+            <View style={styles.socialRow}>
+              <TouchableOpacity
+                style={styles.socialButton}
+                onPress={() => handleSocialLogin("Google")}
+              >
+                <Image
+                  source={{
+                    uri: "https://www.google.com/favicon.ico",
+                  }}
+                  style={styles.socialIcon}
+                />
+                <Text style={styles.socialButtonText}>Google</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.socialButton}
+                onPress={() => handleSocialLogin("Facebook")}
+              >
+                <Text style={[styles.socialIconLetter, { color: "#1877F2" }]}>
+                  f
                 </Text>
+                <Text style={styles.socialButtonText}>Facebook</Text>
               </TouchableOpacity>
             </View>
           </Animated.View>
@@ -304,55 +333,11 @@ export default function LandingScreen() {
           </View>
         )}
 
-        {/* SECTION 3: VALUE PROPS */}
-        <View style={[styles.section, styles.sectionBorderTop]}>
-          <View style={styles.valueCard}>
-            <View style={styles.valueIconBox}>
-              <Clock size={20} color="#dc2626" />
-            </View>
-            <Text style={styles.valueTitle}>Realtime Tracking</Text>
-            <Text style={styles.valueText}>
-              Pantau status pengerjaan kendaraanmu secara langsung dari
-              perangkat kapanpun dan dimanapun.
-            </Text>
-          </View>
-
-          <View style={styles.valueCard}>
-            <View style={styles.valueIconBox}>
-              <ShieldCheck size={20} color="#dc2626" />
-            </View>
-            <Text style={styles.valueTitle}>Mitra Terpercaya</Text>
-            <Text style={styles.valueText}>
-              Bekerja sama dengan puluhan bengkel bersertifikasi untuk
-              menjamin kualitas servis kendaraan Anda.
-            </Text>
-          </View>
-
-          <View style={styles.valueCard}>
-            <View style={styles.valueIconBox}>
-              <Wrench size={20} color="#dc2626" />
-            </View>
-            <Text style={styles.valueTitle}>Transparan & Cepat</Text>
-            <Text style={styles.valueText}>
-              Bebas antre di lokasi, estimasi pengerjaan jelas, dan layanan
-              komprehensif tanpa biaya tersembunyi.
-            </Text>
-          </View>
-        </View>
-
         {/* FOOTER */}
         <View style={styles.footer}>
           <Text style={styles.footerCopy}>
             © {new Date().getFullYear()} BENGKELKU. All rights reserved.
           </Text>
-          <View style={styles.footerLinks}>
-            <TouchableOpacity onPress={() => router.push("/login")}>
-              <Text style={styles.footerLink}>Masuk</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push("/register")}>
-              <Text style={styles.footerLink}>Daftar</Text>
-            </TouchableOpacity>
-          </View>
         </View>
       </ScrollView>
     </View>
@@ -386,7 +371,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
     backgroundColor: "rgba(0,0,0,0.9)",
     borderBottomWidth: 1,
     borderBottomColor: "#18181b",
@@ -410,31 +395,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     letterSpacing: 1,
   },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-  },
-  headerLink: {
-    color: "#a1a1aa",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  headerCta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#dc2626",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-  },
-  headerCtaText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "800",
-  },
-
   // HERO
   hero: {
     minHeight: 560,
@@ -518,6 +478,56 @@ const styles = StyleSheet.create({
     color: "#e4e4e7",
     fontWeight: "800",
     fontSize: 13,
+  },
+
+  // DIVIDER ("atau lanjutkan dengan")
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    marginTop: 24,
+    marginBottom: 16,
+    gap: 10,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "rgba(82,82,91,0.6)",
+  },
+  dividerText: {
+    color: "#a1a1aa",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+
+  // SOCIAL LOGIN BUTTONS (DUMMY)
+  socialRow: {
+    flexDirection: "row",
+    width: "100%",
+    gap: 12,
+  },
+  socialButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#fff",
+    paddingVertical: 14,
+    borderRadius: 14,
+  },
+  socialIcon: {
+    width: 16,
+    height: 16,
+  },
+  socialIconLetter: {
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  socialButtonText: {
+    color: "#18181b",
+    fontSize: 12,
+    fontWeight: "800",
   },
 
   // SECTIONS
@@ -665,38 +675,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  // VALUE PROPS
-  valueCard: {
-    backgroundColor: "#09090b",
-    borderWidth: 1,
-    borderColor: "#18181b",
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    gap: 8,
-  },
-  valueIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "rgba(220,38,38,0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(239,68,68,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 4,
-  },
-  valueTitle: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "800",
-  },
-  valueText: {
-    color: "#a1a1aa",
-    fontSize: 12,
-    lineHeight: 18,
-  },
-
   // FOOTER
   footer: {
     borderTopWidth: 1,
@@ -709,14 +687,5 @@ const styles = StyleSheet.create({
   footerCopy: {
     color: "#71717a",
     fontSize: 11,
-  },
-  footerLinks: {
-    flexDirection: "row",
-    gap: 20,
-  },
-  footerLink: {
-    color: "#71717a",
-    fontSize: 11,
-    fontWeight: "600",
   },
 });
