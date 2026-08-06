@@ -27,7 +27,6 @@ import {
   Ban,
   AlertCircle,
   Wrench,
-  PlusCircle,
 } from "lucide-react-native";
 import BottomNavBar from "../../components/Bottomnavbar";
 // Samakan dengan API_URL di Login/Register/Verify screen kamu
@@ -286,24 +285,17 @@ export default function RiwayatServisScreen() {
 
       {/* HEADER NAVBAR */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.btnBack}
-          >
-            <ArrowLeft size={18} color="#e4e4e7" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Riwayat Servis</Text>
-        </View>
-
+      <View style={styles.headerLeft}>
         <TouchableOpacity
-          onPress={() => router.push("/booking")}
-          style={styles.btnPrimary}
+          onPress={() => router.replace("/dashboard")}
+          style={styles.btnBack}
         >
-          <PlusCircle size={14} color="#fff" />
-          <Text style={styles.btnPrimaryText}>Booking</Text>
+          <ArrowLeft size={18} color="#e4e4e7" />
         </TouchableOpacity>
+
+        <Text style={styles.headerTitle}>Riwayat Servis</Text>
       </View>
+    </View>
 
       {/* MAIN CONTENT */}
       <ScrollView
