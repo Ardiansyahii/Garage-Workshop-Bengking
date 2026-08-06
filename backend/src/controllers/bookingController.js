@@ -50,44 +50,67 @@ exports.getAllBookings = async (req, res, next) => {
 // ==========================================
 exports.createBooking = async (req, res, next) => {
   try {
-  const {
-  user_id,
-  bengkel_id,
-  service_id,
-  vehicle_name,
-  license_plate,
-  booking_date,
-  booking_time,
-} = req.body;
+    const {
+      user_id,
+      bengkel_id,
+      vehicle_id,
+      service_id,
+      booking_date,
+      booking_time,
+      vehicle_name,
+      license_plate,
+    } = req.body;
 
-// Simpan kendaraan
-const [vehicleResult] = await db.query(
-  `INSERT INTO vehicles (user_id, vehicle_name, license_plate)
-   VALUES (?, ?, ?)`,
-  [user_id, vehicle_name, license_plate]
-);
+    if (!user_id || !bengkel_id || !service_id || !booking_date || !booking_time) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Semua data booking wajib diisi!" });
+    }
 
-// Ambil ID kendaraan yang baru dibuat
-const vehicle_id = vehicleResult.insertId;
+    let resolvedVehicleId = vehicle_id;
 
-// Generate kode booking
-const booking_code = "APEX-" + Math.floor(10000 + Math.random() * 90000);
+    if (!resolvedVehicleId) {
+      if (!vehicle_name || !license_plate) {
+        return res.status(400).json({
+          success: false,
+          message: "Data kendaraan wajib diisi: nama kendaraan dan plat nomor.",
+        });
+      }
 
-// Simpan booking
-await db.query(
-  `INSERT INTO bookings
-  (user_id, bengkel_id, vehicle_id, service_id, booking_date, booking_time, booking_code, status)
-   VALUES (?, ?, ?, ?, ?, ?, ?, 'Menunggu')`,
-  [
-    user_id,
-    bengkel_id,
-    vehicle_id,
-    service_id,
-    booking_date,
-    booking_time,
-    booking_code,
-  ]
-);
+      const normalizedPlate = String(license_plate).trim().toUpperCase();
+      const normalizedVehicleName = String(vehicle_name).trim();
+
+      const [existingVehicle] = await db.query(
+        "SELECT id FROM vehicles WHERE user_id = ? AND LOWER(TRIM(license_plate)) = LOWER(?) LIMIT 1",
+        [user_id, normalizedPlate],
+      );
+
+      if (existingVehicle.length > 0) {
+        resolvedVehicleId = existingVehicle[0].id;
+      } else {
+        const [vehicleResult] = await db.query(
+          "INSERT INTO vehicles (user_id, vehicle_name, license_plate) VALUES (?, ?, ?)",
+          [user_id, normalizedVehicleName, normalizedPlate],
+        );
+        resolvedVehicleId = vehicleResult.insertId;
+      }
+    }
+
+    // Generate kode unik booking
+    const booking_code = "APEX-" + Math.floor(10000 + Math.random() * 90000);
+
+    await db.query(
+      "INSERT INTO bookings (user_id, bengkel_id, vehicle_id, service_id, booking_date, booking_time, booking_code, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'Menunggu')",
+      [
+        user_id,
+        bengkel_id,
+        resolvedVehicleId,
+        service_id,
+        booking_date,
+        booking_time,
+        booking_code,
+      ],
+    );
 
     // Ambil data nomor WhatsApp pelanggan, nama bengkel, dan admin bengkel untuk dikirimi pesan WA
     const [userData] = await db.query(

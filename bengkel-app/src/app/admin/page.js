@@ -518,7 +518,7 @@ export default function AdminBengkelDashboard() {
                 MITRA<span className="text-red-600">BENGKEL</span>
               </h1>
               <p className="text-[10px] text-zinc-500 font-mono mt-1">
-                APEX GARAGE SYSTEM
+                DASHBOARD GARAGE SYSTEM
               </p>
             </div>
           </div>

@@ -1,6 +1,12 @@
 backend/node_modules
 backend/.env
 
+bengkel-mobile/.node_modules
+bengkel-mobile/expo-env.d.ts
+
+
+AGENTS.md
+CLAUDE.md
 
 bengkel-app/node_modules
 bengkel-app/.next
