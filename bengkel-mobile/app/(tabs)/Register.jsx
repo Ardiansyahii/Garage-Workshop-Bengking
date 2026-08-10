@@ -43,7 +43,7 @@ const FORM_PAGE_WIDTH = SCREEN_WIDTH - 40;
 const API_URL = Platform.select({
   web: "http://localhost:5000",
   android: "http://10.51.2.60:5000", // khusus Emulator Android
-  default: "http://10.51.2.60:5000", // Ganti dengan IP Wi-Fi laptop kamu jika pakai HP Fisik (Expo Go)
+  default: "http://10.240.180.60:5000", // Ganti dengan IP Wi-Fi laptop kamu jika pakai HP Fisik (Expo Go)
 });
 
 const ROUTES = {
