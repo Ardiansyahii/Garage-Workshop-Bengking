@@ -33,7 +33,7 @@ import BottomNavBar from "../../components/Bottomnavbar";
 const API_URL = Platform.select({
   web: "http://localhost:5000",
   android: "http://10.51.2.60:5000", // khusus Emulator Android
-  default: "http://10.51.2.60:5000", // Ganti dengan IP Wi-Fi laptop kamu jika pakai HP Fisik (Expo Go)
+  default: "http://10.240.180.60:5000", // Ganti dengan IP Wi-Fi laptop kamu jika pakai HP Fisik (Expo Go)
 });
 
 // API Helper pengganti fetchWithAuth
@@ -156,6 +156,11 @@ export default function RiwayatServisScreen() {
   };
 
   // Process Reschedule Submission
+  // FIX: sebelumnya endpoint ini salah pakai `/api/bookings?user_id=...`
+  // (endpoint yang sama dengan list/create booking), sehingga backend
+  // membuat entry booking BARU alih-alih meng-update booking yang ada.
+  // Sekarang diarahkan ke endpoint khusus reschedule, konsisten dengan
+  // pola endpoint cancel di atas.
   const submitRescheduleBooking = async () => {
     if (
       !rescheduleData.date ||
@@ -167,7 +172,7 @@ export default function RiwayatServisScreen() {
     }
 
     try {
-      const data = await fetchWithAuth(`/api/bookings?user_id=${user.id}`, {
+      const data = await fetchWithAuth("/api/booking/reschedule", {
         method: "PATCH",
         body: JSON.stringify({
           booking_id: selectedBookingId,
@@ -285,17 +290,17 @@ export default function RiwayatServisScreen() {
 
       {/* HEADER NAVBAR */}
       <View style={styles.header}>
-      <View style={styles.headerLeft}>
-        <TouchableOpacity
-          onPress={() => router.replace("/dashboard")}
-          style={styles.btnBack}
-        >
-          <ArrowLeft size={18} color="#e4e4e7" />
-        </TouchableOpacity>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity
+            onPress={() => router.replace("/dashboard")}
+            style={styles.btnBack}
+          >
+            <ArrowLeft size={18} color="#e4e4e7" />
+          </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>Riwayat Servis</Text>
+          <Text style={styles.headerTitle}>Riwayat Servis</Text>
+        </View>
       </View>
-    </View>
 
       {/* MAIN CONTENT */}
       <ScrollView
@@ -341,7 +346,7 @@ export default function RiwayatServisScreen() {
                 kategori status tersebut.
               </Text>
               <TouchableOpacity
-                onPress={() => router.push("/booking")}
+                onPress={() => router.push("/dashboard")}
                 style={styles.emptyButton}
               >
                 <Text style={styles.emptyButtonText}>Buat Booking Sekarang</Text>
@@ -554,7 +559,7 @@ export default function RiwayatServisScreen() {
           </View>
         </View>
       </Modal>
-       <BottomNavBar activeTab="Riwayat" />
+      <BottomNavBar activeTab="Riwayat" />
     </SafeAreaView>
   );
 }

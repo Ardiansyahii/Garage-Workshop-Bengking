@@ -31,9 +31,9 @@ import BottomNavBar from "../../components/Bottomnavbar"; // sesuaikan path rela
 
 // Samakan dengan API_URL di Login/Register/Verify screen kamu
 const API_URL = Platform.select({
-  web: "http://localhost:5000",
-  android: "http://10.51.2.60:5000", // khusus Emulator Android
-  default: "http://10.51.2.60:5000", // Ganti dengan IP Wi-Fi laptop kamu jika pakai HP Fisik (Expo Go)
+  web:"http://localhost:5000",
+  android:"http://10.51.2.60:5000", // khusus Emulator Android
+  default:"http://10.240.180.60:5000", // Ganti dengan IP Wi-Fi laptop kamu jika pakai HP Fisik (Expo Go)
 });
 
 // API Helper pengganti fetchWithAuth
