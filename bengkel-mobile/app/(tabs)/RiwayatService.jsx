@@ -10,12 +10,10 @@ import {
   StyleSheet,
   Modal,
   TextInput,
-  Platform,
 } from "react-native";
 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   ArrowLeft,
   Clock,
@@ -30,24 +28,9 @@ import {
   PlusCircle,
 } from "lucide-react-native";
 import BottomNavBar from "../../components/Bottomnavbar";
-// Samakan dengan API_URL di Login/Register/Verify screen kamu
-const API_URL = Platform.select({
-  web: "http://localhost:5000",
-  android: "http://10.51.2.60:5000", // khusus Emulator Android
-  default: "http://10.51.2.60:5000", // Ganti dengan IP Wi-Fi laptop kamu jika pakai HP Fisik (Expo Go)
-});
 
-// API Helper pengganti fetchWithAuth
-const fetchWithAuth = async (url, options = {}) => {
-  const token = await AsyncStorage.getItem("auth_token");
-  const headers = {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...options.headers,
-  };
-  const response = await fetch(`${API_URL}${url}`, { ...options, headers });
-  return await response.json();
-};
+import { fetchWithAuth, ROUTES } from "../../lib/api";
+import { getUser } from "../../lib/storage";
 
 export default function RiwayatServisScreen() {
   const router = useRouter();
@@ -83,18 +66,15 @@ export default function RiwayatServisScreen() {
   useEffect(() => {
     const initSession = async () => {
       try {
-        const storedUser =
-          (await AsyncStorage.getItem("user")) ||
-          (await AsyncStorage.getItem("user_session"));
+        const storedUser = await getUser();
         if (!storedUser) {
-          router.replace("/login");
+          router.replace(ROUTES.login);
           return;
         }
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-        fetchBookings(parsedUser.id);
+        setUser(storedUser);
+        fetchBookings(storedUser.id);
       } catch (e) {
-        router.replace("/login");
+        router.replace(ROUTES.login);
       }
     };
 
@@ -106,8 +86,10 @@ export default function RiwayatServisScreen() {
     if (!user) return;
 
     const interval = setInterval(() => {
-      fetchBookings(user.id);
-    }, 3000);
+      if (document.visibilityState === "visible") {
+        fetchBookings(user.id);
+      }
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [user]);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,12 +10,10 @@ import {
   StatusBar,
   StyleSheet,
   Modal,
-  Platform,
 } from "react-native";
 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   Wrench,
   ArrowLeft,
@@ -32,33 +30,11 @@ import {
 } from "lucide-react-native";
 import BottomNavBar from "../../components/Bottomnavbar";
 import { useFocusEffect } from "expo-router";
-import { useCallback } from "react";
-// Samakan dengan API_URL di Login/Register/Verify/Dashboard screen kamu
-const API_URL = Platform.select({
-  web: "http://localhost:5000",
-  android: "http://10.51.2.60:5000", // khusus Emulator Android
-  default: "http://10.51.2.60:5000", // Ganti dengan IP Wi-Fi laptop kamu jika pakai HP Fisik (Expo Go)
-});
+
+import { fetchWithAuth, formatRupiah, ROUTES } from "../../lib/api";
+import { getUser } from "../../lib/storage";
 
 const DAYS = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
-
-// Helper format harga ke Rupiah
-const formatRupiah = (value) => {
-  const number = Number(value) || 0;
-  return `Rp${number.toLocaleString("id-ID")}`;
-};
-
-// API Helper (sama pola dengan dashboard.jsx)
-const fetchWithAuth = async (url, options = {}) => {
-  const token = await AsyncStorage.getItem("auth_token");
-  const headers = {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...options.headers,
-  };
-  const response = await fetch(`${API_URL}${url}`, { ...options, headers });
-  return await response.json();
-};
 
 export default function BookingScreen() {
   const router = useRouter();
@@ -113,23 +89,21 @@ export default function BookingScreen() {
   };
 
   // 1. Cek Sesi & Ambil Daftar Bengkel (+ auto-prefill jika datang dari Dashboard)
- useFocusEffect(
+  useFocusEffect(
   useCallback(() => {
     const init = async () => {
-      const session =
-        (await AsyncStorage.getItem("user_session")) ||
-        (await AsyncStorage.getItem("user"));
+      const session = await getUser();
 
       if (!session) {
         Alert.alert(
           "Akses Dibatasi",
           "Silakan masuk atau daftar terlebih dahulu untuk melakukan booking.",
-          [{ text: "OK", onPress: () => router.replace("/Login") }]
+          [{ text: "OK", onPress: () => router.replace(ROUTES.login) }]
         );
         return;
       }
 
-      setUser(JSON.parse(session));
+      setUser(session);
       setIsLoading(true);
 
       try {
@@ -342,7 +316,7 @@ export default function BookingScreen() {
 
       if (data?.success) {
         Alert.alert("Booking Berhasil!", "Pesanan kamu sudah masuk antrean bengkel.");
-        router.replace("/dashboard");
+        router.replace(ROUTES.dashboard);
       } else {
         Alert.alert("Gagal Booking", data.message || "Terjadi kesalahan.");
       }
@@ -373,7 +347,7 @@ export default function BookingScreen() {
         {/* HEADER / BACK */}
        <TouchableOpacity
         style={styles.backBtn}
-        onPress={() => router.replace("/dashboard")}
+        onPress={() => router.replace(ROUTES.dashboard)}
       >
         <ArrowLeft size={14} color="#a1a1aa" />
         <Text style={styles.backBtnText}>Kembali</Text>

@@ -10,12 +10,10 @@ import {
   StyleSheet,
   Modal,
   Image,
-  Platform,
 } from "react-native";
 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   Wrench,
   LogOut,
@@ -29,30 +27,8 @@ import {
 } from "lucide-react-native";
 import BottomNavBar from "../../components/Bottomnavbar"; // sesuaikan path relatif ini dengan lokasi folder components kamu
 
-// Samakan dengan API_URL di Login/Register/Verify screen kamu
-const API_URL = Platform.select({
-  web: "http://localhost:5000",
-  android: "http://10.51.2.60:5000", // khusus Emulator Android
-  default: "http://10.51.2.60:5000", // Ganti dengan IP Wi-Fi laptop kamu jika pakai HP Fisik (Expo Go)
-});
-
-// API Helper pengganti fetchWithAuth
-const fetchWithAuth = async (url, options = {}) => {
-  const token = await AsyncStorage.getItem("auth_token");
-  const headers = {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...options.headers,
-  };
-  const response = await fetch(`${API_URL}${url}`, { ...options, headers });
-  return await response.json();
-};
-
-// Helper format harga ke Rupiah
-const formatRupiah = (value) => {
-  const number = Number(value) || 0;
-  return `Rp${number.toLocaleString("id-ID")}`;
-};
+import { fetchWithAuth, formatRupiah, ROUTES } from "../../lib/api";
+import { getUser, clearSession } from "../../lib/storage";
 
 export default function UserDashboardScreen() {
   const router = useRouter();
@@ -76,17 +52,14 @@ export default function UserDashboardScreen() {
   useEffect(() => {
     const initSession = async () => {
       try {
-        const storedUser =
-          (await AsyncStorage.getItem("user")) ||
-          (await AsyncStorage.getItem("user_session"));
+        const storedUser = await getUser();
         if (!storedUser) {
-          router.replace("/login");
+          router.replace(ROUTES.login);
           return;
         }
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
+        setUser(storedUser);
       } catch (e) {
-        router.replace("/login");
+        router.replace(ROUTES.login);
       } finally {
         setIsLoading(false);
       }
@@ -191,10 +164,8 @@ export default function UserDashboardScreen() {
         text: "Ya, Keluar",
         style: "destructive",
         onPress: async () => {
-          await AsyncStorage.removeItem("user");
-          await AsyncStorage.removeItem("auth_token");
-          await AsyncStorage.removeItem("user_session");
-          router.replace("/login");
+          await clearSession();
+          router.replace(ROUTES.login);
         },
       },
     ]);
