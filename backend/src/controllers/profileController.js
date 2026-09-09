@@ -1,16 +1,15 @@
-const bcrypt = require("bcryptjs");
 const db = require("../config/db");
+const { hashPassword, validatePassword } = require("../utils/helpers");
 
 // ==========================================
-// 1. GET: Ambil Data Profil (Admin / User)
+// 1. GET: Ambil Data Profil
 // ==========================================
 exports.getMyProfile = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const userRole = req.user.role; // Mengambil role dari payload JWT (misal: 'user', 'admin', dll)
+    const userRole = req.user.role;
 
-    // Jika yang login adalah Pelanggan / User
-    if (userRole === "user" || userRole === "pelanggan") {
+    if (userRole === "pelanggan") {
       const [userData] = await db.query(
         "SELECT id, name, whatsapp, role FROM users WHERE id = ?",
         [userId],
@@ -22,7 +21,6 @@ exports.getMyProfile = async (req, res, next) => {
       });
     }
 
-    // Jika yang login adalah Admin / Owner Bengkel
     const bengkelId = req.user.bengkel_id;
 
     const [adminData] = await db.query(
@@ -31,7 +29,7 @@ exports.getMyProfile = async (req, res, next) => {
     );
 
     const [bengkelData] = await db.query(
-      "SELECT * FROM bengkels WHERE id = ?",
+      "SELECT id, name, address, phone FROM bengkels WHERE id = ?",
       [bengkelId],
     );
 
@@ -48,9 +46,9 @@ exports.getMyProfile = async (req, res, next) => {
 };
 
 // ==========================================
-// 2. PUT: Update Profil User / Pelanggan
+// 2. PUT: Update Profil (User / Admin — unified)
 // ==========================================
-exports.updateUserProfile = async (req, res, next) => {
+const updateProfile = async (req, res, next, successMessage) => {
   try {
     const userId = req.user.id;
     const { name, whatsapp, password } = req.body;
@@ -62,9 +60,27 @@ exports.updateUserProfile = async (req, res, next) => {
       });
     }
 
+    const [existing] = await db.query(
+      "SELECT id FROM users WHERE whatsapp = ? AND id != ?",
+      [whatsapp, userId],
+    );
+    if (existing.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Nomor WhatsApp sudah digunakan user lain!",
+      });
+    }
+
     if (password) {
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(password, salt);
+      const passwordCheck = validatePassword(password);
+      if (!passwordCheck.valid) {
+        return res.status(400).json({
+          success: false,
+          message: passwordCheck.message,
+        });
+      }
+
+      const hashedPassword = await hashPassword(password);
 
       await db.query(
         "UPDATE users SET name = ?, whatsapp = ?, password = ? WHERE id = ?",
@@ -80,53 +96,21 @@ exports.updateUserProfile = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: "Profil pelanggan berhasil diperbarui!",
+      message: successMessage,
     });
   } catch (error) {
     next(error);
   }
 };
 
-// ==========================================
-// 3. PUT: Update Profil Admin
-// ==========================================
-exports.updateAdminProfile = async (req, res, next) => {
-  try {
-    const adminId = req.user.id;
-    const { name, whatsapp, password } = req.body;
+exports.updateUserProfile = (req, res, next) =>
+  updateProfile(req, res, next, "Profil pelanggan berhasil diperbarui!");
 
-    if (!name || !whatsapp) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Nama dan WhatsApp wajib diisi!" });
-    }
-
-    if (password) {
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(password, salt);
-
-      await db.query(
-        "UPDATE users SET name = ?, whatsapp = ?, password = ? WHERE id = ?",
-        [name, whatsapp, hashedPassword, adminId],
-      );
-    } else {
-      await db.query("UPDATE users SET name = ?, whatsapp = ? WHERE id = ?", [
-        name,
-        whatsapp,
-        adminId,
-      ]);
-    }
-
-    return res
-      .status(200)
-      .json({ success: true, message: "Profil Admin berhasil diperbarui!" });
-  } catch (error) {
-    next(error);
-  }
-};
+exports.updateAdminProfile = (req, res, next) =>
+  updateProfile(req, res, next, "Profil Admin berhasil diperbarui!");
 
 // ==========================================
-// 4. PUT: Update Informasi Bengkel
+// 3. PUT: Update Informasi Bengkel
 // ==========================================
 exports.updateBengkelInfo = async (req, res, next) => {
   try {
@@ -134,12 +118,21 @@ exports.updateBengkelInfo = async (req, res, next) => {
     const { name, address, phone } = req.body;
 
     if (!name || !address || !phone) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Nama bengkel, alamat, dan telepon wajib diisi!",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Nama bengkel, alamat, dan telepon wajib diisi!",
+      });
+    }
+
+    const [existing] = await db.query(
+      "SELECT id FROM bengkels WHERE id = ?",
+      [bengkelId],
+    );
+    if (existing.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Bengkel tidak ditemukan!",
+      });
     }
 
     await db.query(
@@ -147,12 +140,10 @@ exports.updateBengkelInfo = async (req, res, next) => {
       [name, address, phone, bengkelId],
     );
 
-    return res
-      .status(200)
-      .json({
-        success: true,
-        message: "Informasi Bengkel berhasil diperbarui!",
-      });
+    return res.status(200).json({
+      success: true,
+      message: "Informasi Bengkel berhasil diperbarui!",
+    });
   } catch (error) {
     next(error);
   }
