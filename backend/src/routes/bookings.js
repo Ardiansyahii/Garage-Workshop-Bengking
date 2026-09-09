@@ -1,23 +1,33 @@
 const express = require("express");
 const router = express.Router();
 const bookingController = require("../controllers/bookingController");
-// Panggil middleware JWT yang sudah kamu buat sebelumnya
-const { verifyToken } = require("../middlewares/auth");
+const { verifyToken, authorizeRole } = require("../middlewares/auth");
 
-// ==========================================
-// ROUTES UNTUK BOOKING (DILINDUNGI JWT)
-// ==========================================
-
-// GET /api/bookings -> Hanya yang bawa token bisa melihat data
+// GET /api/bookings -> Semua yang login bisa melihat
 router.get("/", verifyToken, bookingController.getAllBookings);
 
-// POST /api/bookings -> Hanya pelanggan login yang bisa membuat pesanan
-router.post("/", verifyToken, bookingController.createBooking);
+// POST /api/bookings -> Pelanggan bisa membuat pesanan
+router.post(
+  "/",
+  verifyToken,
+  authorizeRole("pelanggan"),
+  bookingController.createBooking,
+);
 
-// PATCH /api/bookings/:id/status -> Admin mengupdate status pesanan
-router.patch("/:id/status", verifyToken, bookingController.updateStatus);
+// PATCH /api/bookings/:id/status -> Admin bengkel update status
+router.patch(
+  "/:id/status",
+  verifyToken,
+  authorizeRole("admin_bengkel", "superadmin"),
+  bookingController.updateStatus,
+);
 
-// DELETE /api/bookings/:id -> Admin/Pelanggan menghapus riwayat
-router.delete("/:id", verifyToken, bookingController.deleteBooking);
+// DELETE /api/bookings/:id -> Admin bengkel atau superadmin hapus
+router.delete(
+  "/:id",
+  verifyToken,
+  authorizeRole("admin_bengkel", "superadmin"),
+  bookingController.deleteBooking,
+);
 
 module.exports = router;

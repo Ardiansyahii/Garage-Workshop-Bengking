@@ -1,12 +1,16 @@
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 
 const app = express();
 
 // ==========================================
 // 1. GLOBAL MIDDLEWARES
 // ==========================================
+app.use(helmet());
+
 const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:3000";
 app.use(
   cors({
@@ -19,6 +23,31 @@ app.use(
 app.use(cookieParser());
 app.use(express.json({ limit: "1mb" }));
 
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: {
+    success: false,
+    message: "Terlalu banyak percobaan, silakan coba lagi setelah 15 menit.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: {
+    success: false,
+    message: "Terlalu banyak request, silakan coba lagi nanti.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use("/api/auth", authLimiter);
+app.use("/api/", generalLimiter);
+
 // ==========================================
 // 2. IMPORT ROUTES
 // ==========================================
@@ -29,7 +58,6 @@ const bengkelsRoutes = require("./routes/bengkels");
 const vehiclesRoutes = require("./routes/vehicles");
 const usersRoutes = require("./routes/users");
 const adminBengkelRoutes = require("./routes/adminBengkel");
-// Pastikan penulisan nama file sesuai dengan yang ada di foldermu (perhatikan huruf besar/kecilnya)
 const superadminBookingRoutes = require("./routes/superadminBookings");
 const scheduleRoutes = require("./routes/schedules");
 const registerMitraRoutes = require("./routes/registerMitra");
@@ -54,35 +82,35 @@ app.use("/api/profile", profileRoutes);
 app.get("/", (req, res) => {
   res.json({
     success: true,
-    message: "Welcome to Apex Garage API (Enterprise Version)!",
+    message: "Welcome to BengkelKu API!",
   });
 });
 
 // ==========================================
-// 4. GLOBAL 404 HANDLER (Endpoint Tidak Ditemukan)
+// 4. GLOBAL 404 HANDLER
 // ==========================================
-// Jika ada yang sembarangan nembak URL yang tidak ada (misal /api/hacker), dia akan masuk ke sini
 app.use((req, res, next) => {
   res.status(404).json({
     success: false,
-    message: `Oops! Endpoint yang kamu tuju (${req.method} ${req.originalUrl}) tidak ditemukan.`,
+    message: "Endpoint tidak ditemukan.",
   });
 });
 
 // ==========================================
 // 5. GLOBAL ERROR HANDLER
 // ==========================================
-// Jika ada aplikasi yang crash atau error di database, server tidak akan mati, melainkan ditangkap di sini
 app.use((err, req, res, next) => {
-  console.error("🔥 [Global Error]:", err.message || err);
+  console.error("[Global Error]:", err.message || err);
+
+  const isDev = process.env.NODE_ENV === "development";
 
   res.status(err.status || 500).json({
     success: false,
-    message: err.message || "Terjadi kesalahan internal pada server.",
-    // Tampilkan detail error HANYA jika sedang masa pengembangan (development)
-    error: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    message: isDev
+      ? err.message || "Terjadi kesalahan internal pada server."
+      : "Terjadi kesalahan internal pada server.",
+    error: isDev ? err.stack : undefined,
   });
 });
 
-// Export app agar bisa dipanggil oleh server.js
 module.exports = app;
