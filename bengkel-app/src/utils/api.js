@@ -3,12 +3,10 @@ export async function fetchWithAuth(endpoint, options = {}) {
     return fetch(endpoint, options);
   }
 
-  const token = localStorage.getItem("auth_token");
   const headers = { ...(options.headers || {}) };
 
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
+  // Token sudah di httpOnly cookie — browser otomatis kirim
+  // Tidak perlu baca dari localStorage lagi
 
   if (
     options.body !== undefined &&
@@ -22,6 +20,7 @@ export async function fetchWithAuth(endpoint, options = {}) {
   const requestOptions = {
     ...options,
     headers,
+    credentials: "same-origin", // Kirim cookie otomatis
   };
 
   const finalUrl = endpoint.startsWith("http")
@@ -31,12 +30,17 @@ export async function fetchWithAuth(endpoint, options = {}) {
   const response = await fetch(finalUrl, requestOptions);
 
   if (response.status === 401 || response.status === 403) {
-    localStorage.removeItem("user");
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("user_session");
+    // Token expired — bersihkan cookie via backend lalu redirect
+    try {
+      await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || ""}/api/auth/logout`,
+        { method: "POST", credentials: "same-origin" },
+      );
+    } catch {
+      //-ignore — cookie mungkin sudah expired
+    }
     document.cookie = "user_role=; path=/; max-age=0";
-    document.cookie =
-      "user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    localStorage.removeItem("user");
     window.location.replace("/login");
     return null;
   }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
 import { fetchWithAuth } from "@/utils/api";
@@ -29,6 +30,7 @@ import {
 } from "lucide-react";
 
 export default function SuperadminDashboard() {
+  const router = useRouter();
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState("verifikasi");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -72,14 +74,14 @@ export default function SuperadminDashboard() {
   });
 
   useEffect(() => {
-    const session = localStorage.getItem("user_session");
+    const session = localStorage.getItem("user");
     if (!session) {
-      window.location.href = "/login";
+      router.push("/login");
       return;
     }
     const parsedUser = JSON.parse(session);
     if (parsedUser.role !== "superadmin") {
-      window.location.href = "/login";
+      router.push("/login");
       return;
     }
 
@@ -90,15 +92,20 @@ export default function SuperadminDashboard() {
     fetchAdminBengkels();
     fetchBookings();
     fetchMitraRequests();
-  }, []);
+  }, [router]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || ""}/api/auth/logout`,
+        { method: "POST", credentials: "same-origin" },
+      );
+    } catch {
+      // ignore
+    }
     localStorage.removeItem("user");
-    localStorage.removeItem("user_session");
-    localStorage.removeItem("auth_token");
-    document.cookie =
-      "user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-    window.location.href = "/login";
+    document.cookie = "user_role=; path=/; max-age=0";
+    window.location.replace("/login");
   };
 
   // ==========================================

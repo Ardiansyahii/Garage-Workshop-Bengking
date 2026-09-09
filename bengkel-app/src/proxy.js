@@ -1,13 +1,27 @@
 import { NextResponse } from "next/server";
+import jwt from "jsonwebtoken";
+
+const SECRET_KEY = process.env.JWT_SECRET;
 
 export function proxy(request) {
-  // Ambil path URL saat ini (misal: /admin, /superadmin, /login)
   const path = request.nextUrl.pathname;
 
-  // Cek apakah pengguna punya "tanda pengenal" (cookie) yang akan kita buat nanti
-  const role = request.cookies.get("user_role")?.value;
+  // Ambil token dari cookie auth_token (httpOnly)
+  const authToken = request.cookies.get("auth_token")?.value;
 
-  // 1. Jika BELUM LOGIN tapi nekat buka halaman dashboard -> Usir ke /login
+  // Decode JWT untuk dapat role (tanpa verify — middleware hanya cek existence)
+  let role = null;
+  if (authToken && SECRET_KEY) {
+    try {
+      const decoded = jwt.verify(authToken, SECRET_KEY);
+      role = decoded.role;
+    } catch {
+      // Token invalid atau expired — anggap belum login
+      role = null;
+    }
+  }
+
+  // 1. BELUM LOGIN tapi buka halaman protected → redirect ke /login
   if (
     !role &&
     (path.startsWith("/admin") ||
@@ -15,14 +29,18 @@ export function proxy(request) {
       path.startsWith("/dashboard") ||
       path.startsWith("/pelanggan"))
   ) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    const response = NextResponse.redirect(new URL("/login", request.url));
+    // Bersihkan cookie sisa
+    response.cookies.delete("auth_token");
+    response.cookies.delete("user_role");
+    return response;
   }
 
   if (path.startsWith("/pelanggan")) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  // 2. Jika SUDAH LOGIN, tapi mencoba menyusup ke kamar orang lain -> Usir ke /login
+  // 2. SALAH ROLE → redirect ke /login
   if (path.startsWith("/superadmin") && role !== "superadmin") {
     return NextResponse.redirect(new URL("/login", request.url));
   }
@@ -33,7 +51,7 @@ export function proxy(request) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // 3. Jika SUDAH LOGIN tapi malah buka halaman /login atau Beranda (/) -> Langsung arahkan ke kamarnya masing-masing
+  // 3. SUDAH LOGIN tapi buka /login atau / → arahkan ke dashboard sesuai role
   if (role && (path === "/login" || path === "/")) {
     if (role === "superadmin")
       return NextResponse.redirect(new URL("/superadmin", request.url));
@@ -43,11 +61,9 @@ export function proxy(request) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  // 4. Lanjutkan perjalanan jika semuanya aman dan sesuai aturan
   return NextResponse.next();
 }
 
-// Konfigurasi route mana saja yang wajib dijaga ketat oleh Proxy ini
 export const config = {
   matcher: [
     "/",

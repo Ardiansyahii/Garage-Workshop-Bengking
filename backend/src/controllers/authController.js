@@ -71,7 +71,7 @@ exports.register = async (req, res, next) => {
 
     const sendResult = await sendWhatsAppNotification(
       normalizedWhatsapp,
-      `Kode OTP Anda untuk verifikasi akun Apex Garage adalah *${otp}*.\n\nKode ini berlaku selama 5 menit.`,
+      `Kode OTP Anda untuk verifikasi akun BengkelKu adalah *${otp}*.\n\nKode ini berlaku selama 5 menit.`,
     );
 
     if (!sendResult || !sendResult.success) {
@@ -174,7 +174,7 @@ exports.verifyOtp = async (req, res, next) => {
 };
 
 // ==========================================
-// 3. FUNGSI LOGIN
+// 3. FUNGSI LOGIN — Set httpOnly cookie
 // ==========================================
 exports.login = async (req, res, next) => {
   try {
@@ -215,11 +215,28 @@ exports.login = async (req, res, next) => {
       bengkel_id: user.bengkel_id,
     });
 
+    // Set httpOnly cookie — token tidak bisa diakses dari JavaScript
+    res.cookie("auth_token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000, // 24 jam
+      path: "/",
+    });
+
+    // Set role cookie (readable by middleware untuk route protection)
+    res.cookie("user_role", user.role, {
+      httpOnly: false, // Middleware perlu baca ini
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000,
+      path: "/",
+    });
+
     return res.status(200).json({
       success: true,
       message: `Login berhasil sebagai ${user.role}!`,
       role: user.role,
-      token: token,
       user: {
         id: user.id,
         name: user.name,

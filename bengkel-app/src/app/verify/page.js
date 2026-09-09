@@ -88,12 +88,12 @@ function VerifyContent() {
               <Wrench className="w-4 h-4 text-white" />
             </div>
             <div className="text-xl font-black">
-              APEX<span className="text-red-600">GARAGE</span>
+              BENGKEL<span className="text-red-600">KU</span>
             </div>
           </div>
           <h1 className="text-3xl font-black mb-3">Verifikasi WhatsApp.</h1>
           <p className="text-zinc-300 text-xs md:text-sm">
-            Masukkan 4 digit kode OTP yang telah dikirimkan ke nomor WhatsApp
+            Masukkan 6 digit kode OTP yang telah dikirimkan ke nomor WhatsApp
             kamu.
           </p>
         </div>
@@ -122,7 +122,7 @@ function VerifyContent() {
 
             <div>
               <label className="block text-xs font-semibold text-zinc-300 mb-2">
-                Kode OTP (4 Digit)
+                Kode OTP (6 Digit)
               </label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-zinc-500">
@@ -130,12 +130,12 @@ function VerifyContent() {
                 </span>
                 <input
                   type="text"
-                  maxLength={4}
+                  maxLength={6}
                   required
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
                   className="w-full bg-zinc-900 border border-zinc-800 pl-10 pr-4 py-3 rounded-xl text-xs text-white tracking-widest text-center font-bold text-lg outline-none focus:border-red-600"
-                  placeholder="1234"
+                  placeholder="123456"
                 />
               </div>
             </div>

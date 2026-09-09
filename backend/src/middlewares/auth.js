@@ -10,8 +10,14 @@ if (!SECRET_KEY) {
 }
 
 const verifyToken = (req, res, next) => {
+  // Coba ambil token dari Authorization header DULU
   const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
+  let token = authHeader && authHeader.split(" ")[1];
+
+  // Jika tidak ada, coba ambil dari cookie auth_token
+  if (!token && req.cookies && req.cookies.auth_token) {
+    token = req.cookies.auth_token;
+  }
 
   if (!token) {
     return res
