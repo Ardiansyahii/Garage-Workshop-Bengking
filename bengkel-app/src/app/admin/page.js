@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
 import { fetchWithAuth } from "@/utils/api";
+import { tooltipColors } from "@/lib/theme";
 import {
   Wrench,
   LogOut,
@@ -20,6 +21,11 @@ import {
   Activity,
   Clock,
   UserRound,
+  CalendarDays,
+  Wallet,
+  ListChecks,
+  TrendingUp,
+  Sparkles,
 } from "lucide-react";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
@@ -31,6 +37,11 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
+  AreaChart,
+  Area,
+  PieChart,
+  Pie,
+  Legend,
 } from "recharts";
 
 export default function AdminBengkelDashboard() {
@@ -64,8 +75,9 @@ export default function AdminBengkelDashboard() {
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  const [activeTab, setActiveTab] = useState("booking");
+  const [activeTab, setActiveTab] = useState("dashboard");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [today, setToday] = useState("");
 
   const [bookings, setBookings] = useState([]);
   const [services, setServices] = useState([]);
@@ -103,13 +115,88 @@ export default function AdminBengkelDashboard() {
   const statSelesai = bookings.filter((b) => b.status === "Selesai").length;
   const statBatal = bookings.filter((b) => b.status === "Batal").length;
 
-  // Format array data khusus untuk library Recharts
-  const chartData = [
-    { status: "Menunggu", jumlah: statMenunggu, fill: "#eab308" }, // Kuning
-    { status: "Diproses", jumlah: statDiproses, fill: "#3b82f6" }, // Biru
-    { status: "Selesai", jumlah: statSelesai, fill: "#10b981" }, // Hijau
-    { status: "Batal", jumlah: statBatal, fill: "#ef4444" }, // Merah
-  ];
+  // Tanggal hari ini (dihitung sekali, patuh rule purity React)
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    const d = new Date();
+    setToday(
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+        d.getDate(),
+      ).padStart(2, "0")}`,
+    );
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  // Helper: parse harga (string "Rp 50.000" -> angka)
+  const parsePrice = (p) => Number(String(p || "").replace(/\D/g, "")) || 0;
+
+  // Data turunan untuk Dashboard Analitik (purity-safe, via useMemo)
+  const dashboardData = useMemo(() => {
+    const aktif = ["Menunggu", "Diproses"];
+
+    // Antrean hari ini
+    const antreanHariIni = bookings
+      .filter((b) => b.booking_date === today && aktif.includes(b.status))
+      .sort((a, b) => (a.booking_time || "").localeCompare(b.booking_time || ""))
+      .slice(0, 6);
+
+    // Tren 7 hari ke belakang
+    const base = today ? new Date(`${today}T00:00:00`) : new Date();
+    const mapCount = {};
+    bookings.forEach((b) => {
+      if (!b.booking_date) return;
+      mapCount[b.booking_date] = (mapCount[b.booking_date] || 0) + 1;
+    });
+    const tren7Hari = [];
+    for (let i = 6; i >= 0; i -= 1) {
+      const d = new Date(base);
+      d.setDate(d.getDate() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+        2,
+        "0",
+      )}-${String(d.getDate()).padStart(2, "0")}`;
+      const dayName = d.toLocaleDateString("id-ID", { weekday: "short" });
+      tren7Hari.push({ tanggal: dayName, jumlah: mapCount[key] || 0 });
+    }
+
+    // Estimasi pendapatan (booking Selesai)
+    const estimasiPendapatan = bookings
+      .filter((b) => b.status === "Selesai")
+      .reduce((sum, b) => sum + parsePrice(b.price), 0);
+
+    // Top layanan terlaris
+    const serviceCount = {};
+    bookings.forEach((b) => {
+      const name = b.service_name || "Lainnya";
+      serviceCount[name] = (serviceCount[name] || 0) + 1;
+    });
+    const topLayanan = Object.entries(serviceCount)
+      .map(([name, jumlah]) => ({ name, jumlah }))
+      .sort((a, b) => b.jumlah - a.jumlah)
+      .slice(0, 5);
+
+    return {
+      antreanHariIni,
+      tren7Hari,
+      estimasiPendapatan,
+      topLayanan,
+      antreanCount: antreanHariIni.length,
+    };
+  }, [bookings, today]);
+
+  const formatRupiah = (value) =>
+    new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(value);
+
+  const donutData = [
+    { name: "Menunggu", value: statMenunggu, fill: "#eab308" },
+    { name: "Diproses", value: statDiproses, fill: "#3b82f6" },
+    { name: "Selesai", value: statSelesai, fill: "#10b981" },
+    { name: "Batal", value: statBatal, fill: "#ef4444" },
+  ].filter((d) => d.value > 0);
 
   // State Jadwal
   const [schedules, setSchedules] = useState([]);
@@ -398,6 +485,15 @@ export default function AdminBengkelDashboard() {
   ]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  // Auto-refresh data booking tiap 5 detik (Dashboard Analitik LIVE DATA)
+  useEffect(() => {
+    if (!user) return undefined;
+    const interval = setInterval(() => {
+      fetchBookings();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [user, fetchBookings]);
+
   const handleSubmitSchedule = async (e) => {
     e.preventDefault();
     const url = isEditingSchedule
@@ -473,6 +569,11 @@ export default function AdminBengkelDashboard() {
   // Konfigurasi Navigasi Sidebar
   const navItems = [
     {
+      id: "dashboard",
+      label: "Dashboard Analitik",
+      icon: Activity,
+    },
+    {
       id: "booking",
       label: "Pesanan Masuk",
       icon: ClipboardList,
@@ -494,7 +595,7 @@ export default function AdminBengkelDashboard() {
     );
 
   return (
-    <main className="min-h-screen bg-black text-white font-sans flex overflow-hidden selection:bg-red-600">
+    <main className="min-h-screen bg-zinc-950 text-white font-sans flex overflow-hidden selection:bg-red-600">
       {/* =========================================================
           SIDEBAR KIRI (DESKTOP & MOBILE)
       ========================================================= */}
@@ -611,102 +712,6 @@ export default function AdminBengkelDashboard() {
         </header>
 
         <div className="relative z-10 flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar">
-          {/* STATS WIDGETS */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div className="bg-zinc-950 border border-zinc-900/80 p-5 rounded-2xl shadow-xl flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-blue-600/10 flex items-center justify-center border border-blue-600/20">
-                <ClipboardList className="w-5 h-5 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-0.5">
-                  Total Reservasi
-                </p>
-                <p className="text-2xl font-black text-white">
-                  {bookings.length}
-                </p>
-              </div>
-            </div>
-            <div className="bg-zinc-950 border border-zinc-900/80 p-5 rounded-2xl shadow-xl flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-emerald-600/10 flex items-center justify-center border border-emerald-600/20">
-                <Briefcase className="w-5 h-5 text-emerald-500" />
-              </div>
-              <div>
-                <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-0.5">
-                  Layanan Tersedia
-                </p>
-                <p className="text-2xl font-black text-white">
-                  {services.length}
-                </p>
-              </div>
-            </div>
-            <div className="bg-zinc-950 border border-zinc-900/80 p-5 rounded-2xl shadow-xl flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-red-600/10 flex items-center justify-center border border-red-600/20">
-                <CalendarClock className="w-5 h-5 text-red-500" />
-              </div>
-              <div>
-                <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-0.5">
-                  Hari Operasional
-                </p>
-                <p className="text-2xl font-black text-white">
-                  {schedules.filter((s) => !s.is_closed).length} Hari
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* ========================================================
-              VISUALISASI GRAFIK ANALITIK (MENGGUNAKAN RECHARTS)
-          ======================================================== */}
-          <div className="bg-zinc-950/80 backdrop-blur-md p-6 rounded-3xl border border-zinc-900/80 shadow-2xl mb-8">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-sm font-black text-white flex items-center gap-2">
-                <Activity className="w-4 h-4 text-red-500" /> Analitik Status
-                Pesanan
-              </h2>
-              <span className="text-[10px] bg-red-600/10 text-red-500 px-2 py-1 rounded-md border border-red-600/20 font-bold tracking-wider">
-                LIVE DATA
-              </span>
-            </div>
-
-            <div className="w-full h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={chartData}
-                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                >
-                  <XAxis
-                    dataKey="status"
-                    stroke="#71717a"
-                    fontSize={12}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    stroke="#71717a"
-                    fontSize={12}
-                    tickLine={false}
-                    allowDecimals={false}
-                  />
-                  <Tooltip
-                    cursor={{ fill: "rgba(255, 255, 255, 0.03)" }}
-                    contentStyle={{
-                      backgroundColor: "#09090b",
-                      borderColor: "#27272a",
-                      borderRadius: "12px",
-                      color: "#f4f4f5",
-                      fontSize: "12px",
-                      boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5)",
-                    }}
-                  />
-                  <Bar dataKey="jumlah" radius={[8, 8, 0, 0]}>
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
           {/* DYNAMIC CONTENT AREA DENGAN ANIMASI */}
           <AnimatePresence mode="wait">
             <motion.div
@@ -717,6 +722,356 @@ export default function AdminBengkelDashboard() {
               transition={{ duration: 0.3 }}
               className="w-full"
             >
+              {/* ========================================================
+                  KONTEN TAB: DASHBOARD ANALITIK
+              ======================================================== */}
+              {activeTab === "dashboard" && (
+                <div className="space-y-6">
+                  {/* HEADER SELAMAT DATANG */}
+                  <div className="relative overflow-hidden bg-zinc-950/80 backdrop-blur-md p-6 md:p-8 rounded-3xl border border-zinc-900/80 shadow-2xl">
+                    <div className="absolute top-[-40%] right-[-10%] w-72 h-72 bg-red-600/10 blur-[100px] rounded-full pointer-events-none" />
+                    <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
+                      <div>
+                        <p className="font-mono text-red-500 text-xs tracking-widest uppercase mb-2">
+                          {today
+                            ? new Date(
+                                `${today}T00:00:00`,
+                              ).toLocaleDateString("id-ID", {
+                                weekday: "long",
+                                day: "numeric",
+                                month: "long",
+                                year: "numeric",
+                              })
+                            : ""}
+                        </p>
+                        <h1 className="text-2xl md:text-3xl font-black text-white">
+                          Halo, {user?.name || "Admin"}!{" "}
+                          <Sparkles className="w-6 h-6 text-red-500 inline -mt-1" />
+                        </h1>
+                        <p className="text-sm text-zinc-400 mt-1.5 flex items-center gap-2">
+                          <Store className="w-4 h-4 text-red-500" />
+                          {profileBengkel?.name ||
+                            `Bengkel #${user?.bengkel_id}`}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className="text-[10px] bg-red-600/10 text-red-500 px-3 py-1.5 rounded-md border border-red-600/20 font-bold tracking-wider flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                          LIVE DATA
+                        </span>
+                        <button
+                          onClick={() => setActiveTab("layanan")}
+                          className="bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-4 py-2.5 rounded-xl text-xs font-bold transition border border-zinc-800 flex items-center gap-2 cursor-pointer"
+                        >
+                          <PlusCircle className="w-4 h-4" /> Tambah Layanan
+                        </button>
+                        <button
+                          onClick={handleExportPDF}
+                          className="bg-emerald-600/10 hover:bg-emerald-600 text-emerald-500 hover:text-white border border-emerald-500/30 px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer"
+                        >
+                          <ClipboardList className="w-4 h-4" /> Cetak PDF
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* KPI CARDS */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="bg-zinc-950 border border-zinc-900/80 p-5 rounded-2xl shadow-xl flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-blue-600/10 flex items-center justify-center border border-blue-600/20">
+                        <ClipboardList className="w-5 h-5 text-blue-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-0.5">
+                          Total Reservasi
+                        </p>
+                        <p className="text-2xl font-black text-white">
+                          {bookings.length}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-zinc-950 border border-zinc-900/80 p-5 rounded-2xl shadow-xl flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-amber-600/10 flex items-center justify-center border border-amber-600/20">
+                        <CalendarDays className="w-5 h-5 text-amber-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-0.5">
+                          Antrean Hari Ini
+                        </p>
+                        <p className="text-2xl font-black text-white">
+                          {dashboardData.antreanCount}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-zinc-950 border border-zinc-900/80 p-5 rounded-2xl shadow-xl flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-600/10 flex items-center justify-center border border-emerald-600/20">
+                        <TrendingUp className="w-5 h-5 text-emerald-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-0.5">
+                          Servis Selesai
+                        </p>
+                        <p className="text-2xl font-black text-white">
+                          {statSelesai}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-zinc-950 border border-zinc-900/80 p-5 rounded-2xl shadow-xl flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-red-600/10 flex items-center justify-center border border-red-600/20">
+                        <Wallet className="w-5 h-5 text-red-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-0.5">
+                          Estimasi Pendapatan
+                        </p>
+                        <p className="text-xl font-black text-white">
+                          {formatRupiah(dashboardData.estimasiPendapatan)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* GRAFIK TREN + DONUT */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="bg-zinc-950/80 backdrop-blur-md p-6 rounded-3xl border border-zinc-900/80 shadow-2xl">
+                      <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-sm font-black text-white flex items-center gap-2">
+                          <Activity className="w-4 h-4 text-red-500" /> Tren
+                          Booking 7 Hari
+                        </h2>
+                      </div>
+                      <div className="w-full h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart
+                            data={dashboardData.tren7Hari}
+                            margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                          >
+                            <defs>
+                              <linearGradient
+                                id="colorBooking"
+                                x1="0"
+                                y1="0"
+                                x2="0"
+                                y2="1"
+                              >
+                                <stop
+                                  offset="5%"
+                                  stopColor="#ef4444"
+                                  stopOpacity={0.4}
+                                />
+                                <stop
+                                  offset="95%"
+                                  stopColor="#ef4444"
+                                  stopOpacity={0}
+                                />
+                              </linearGradient>
+                            </defs>
+                            <XAxis
+                              dataKey="tanggal"
+                              stroke="#71717a"
+                              fontSize={12}
+                              tickLine={false}
+                            />
+                            <YAxis
+                              stroke="#71717a"
+                              fontSize={12}
+                              tickLine={false}
+                              allowDecimals={false}
+                            />
+                            <Tooltip
+                              contentStyle={{
+                                ...tooltipColors(),
+                                borderRadius: "12px",
+                                fontSize: "12px",
+                              }}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="jumlah"
+                              stroke="#ef4444"
+                              strokeWidth={2}
+                              fill="url(#colorBooking)"
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    <div className="bg-zinc-950/80 backdrop-blur-md p-6 rounded-3xl border border-zinc-900/80 shadow-2xl">
+                      <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-sm font-black text-white flex items-center gap-2">
+                          <Activity className="w-4 h-4 text-red-500" />{" "}
+                          Distribusi Status
+                        </h2>
+                      </div>
+                      <div className="w-full h-64 flex items-center justify-center">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={donutData}
+                              dataKey="value"
+                              nameKey="name"
+                              innerRadius={55}
+                              outerRadius={85}
+                              paddingAngle={3}
+                              stroke="none"
+                            >
+                              {donutData.map((entry, index) => (
+                                <Cell
+                                  key={`cell-${index}`}
+                                  fill={entry.fill}
+                                />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              contentStyle={{
+                                ...tooltipColors(),
+                                borderRadius: "12px",
+                                fontSize: "12px",
+                              }}
+                            />
+                            <Legend
+                              verticalAlign="bottom"
+                              iconType="circle"
+                              iconSize={8}
+                              wrapperStyle={{
+                                fontSize: "12px",
+                                color: "#a1a1aa",
+                              }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* TOP LAYANAN + ANTREAN HARI INI */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="bg-zinc-950/80 backdrop-blur-md p-6 rounded-3xl border border-zinc-900/80 shadow-2xl">
+                      <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-sm font-black text-white flex items-center gap-2">
+                          <Briefcase className="w-4 h-4 text-red-500" /> Top
+                          Layanan Terlaris
+                        </h2>
+                      </div>
+                      {dashboardData.topLayanan.length === 0 ? (
+                        <p className="text-sm text-zinc-500">
+                          Belum ada data layanan.
+                        </p>
+                      ) : (
+                        <div className="w-full h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                              data={dashboardData.topLayanan}
+                              layout="vertical"
+                              margin={{
+                                top: 5,
+                                right: 20,
+                                left: 10,
+                                bottom: 5,
+                              }}
+                            >
+                              <XAxis
+                                type="number"
+                                stroke="#71717a"
+                                fontSize={12}
+                                tickLine={false}
+                                allowDecimals={false}
+                              />
+                              <YAxis
+                                type="category"
+                                dataKey="name"
+                                stroke="#71717a"
+                                fontSize={11}
+                                tickLine={false}
+                                width={120}
+                              />
+                              <Tooltip
+                                contentStyle={{
+                                  ...tooltipColors(),
+                                  borderRadius: "12px",
+                                  fontSize: "12px",
+                                }}
+                              />
+                              <Bar
+                                dataKey="jumlah"
+                                radius={[0, 8, 8, 0]}
+                                fill="#ef4444"
+                                barSize={16}
+                              />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="bg-zinc-950/80 backdrop-blur-md p-6 rounded-3xl border border-zinc-900/80 shadow-2xl">
+                      <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-sm font-black text-white flex items-center gap-2">
+                          <ListChecks className="w-4 h-4 text-red-500" />{" "}
+                          Antrean Hari Ini
+                        </h2>
+                        <span className="text-[10px] bg-amber-600/10 text-amber-500 px-2 py-1 rounded-md border border-amber-600/20 font-bold tracking-wider">
+                          {dashboardData.antreanCount} PESANAN
+                        </span>
+                      </div>
+
+                      {dashboardData.antreanHariIni.length === 0 ? (
+                        <div className="text-sm text-zinc-500 py-10 text-center">
+                          Tidak ada antrean hari ini.
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {dashboardData.antreanHariIni.map((b) => (
+                            <div
+                              key={b.id}
+                              className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-4 flex items-center justify-between gap-3"
+                            >
+                              <div className="min-w-0">
+                                <p className="text-sm font-black text-white font-mono">
+                                  {b.booking_code}
+                                </p>
+                                <p className="text-xs text-zinc-400 truncate mt-0.5">
+                                  {b.customer_name} • {b.service_name}
+                                </p>
+                                <p className="text-[11px] text-zinc-500 mt-0.5">
+                                  {new Date(
+                                    b.booking_date,
+                                  ).toLocaleDateString("id-ID")}{" "}
+                                  • {b.booking_time}
+                                </p>
+                              </div>
+                              <select
+                                value={b.status}
+                                onChange={(e) =>
+                                  handleStatusChange(b.id, e.target.value)
+                                }
+                                className={`shrink-0 bg-black border border-zinc-800 px-3 py-2 rounded-xl text-xs font-bold outline-none cursor-pointer focus:border-zinc-500 appearance-none text-center ${
+                                  b.status === "Selesai"
+                                    ? "text-emerald-500 bg-emerald-500/5"
+                                    : b.status === "Batal"
+                                      ? "text-red-500 bg-red-500/5"
+                                      : "text-yellow-500 bg-yellow-500/5"
+                                }`}
+                              >
+                                <option value="Menunggu">Menunggu</option>
+                                <option value="Diproses">Diproses</option>
+                                <option value="Selesai">Selesai</option>
+                                <option value="Batal">Batal</option>
+                              </select>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* ========================================================
                   KONTEN TAB: DATA BOOKING
               ======================================================== */}
@@ -820,10 +1175,10 @@ export default function AdminBengkelDashboard() {
                                   }
                                   className={`w-full bg-black border border-zinc-800 px-3 py-2 rounded-xl text-xs font-bold outline-none cursor-pointer focus:border-zinc-500 appearance-none text-center ${b.status === "Selesai" ? "text-emerald-500 bg-emerald-500/5" : b.status === "Batal" ? "text-red-500 bg-red-500/5" : "text-yellow-500 bg-yellow-500/5"}`}
                                 >
-                                  <option value="Menunggu">🕒 Menunggu</option>
-                                  <option value="Diproses">⚙️ Diproses</option>
-                                  <option value="Selesai">✅ Selesai</option>
-                                  <option value="Batal">❌ Batal</option>
+                                  <option value="Menunggu">Menunggu</option>
+                                  <option value="Diproses">Diproses</option>
+                                  <option value="Selesai">Selesai</option>
+                                  <option value="Batal">Batal</option>
                                 </select>
                               </td>
                             </tr>

@@ -1,4 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
+import ThemeToggle from "@/components/ThemeToggle";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -21,8 +23,29 @@ export default function RootLayout({ children }) {
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <Script id="theme-init" strategy="beforeInteractive">
+          {`
+            (function () {
+              try {
+                var t = localStorage.getItem("bengkelku-theme");
+                if (t === "light") {
+                  document.documentElement.classList.add("light");
+                } else if (
+                  t !== "dark" &&
+                  window.matchMedia("(prefers-color-scheme: light)").matches
+                ) {
+                  document.documentElement.classList.add("light");
+                }
+              } catch (e) {}
+            })();
+          `}
+        </Script>
+        {children}
+        <ThemeToggle />
+      </body>
     </html>
   );
 }

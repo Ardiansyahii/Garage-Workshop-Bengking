@@ -224,7 +224,7 @@ export default function LandingPage() {
               className="text-5xl md:text-8xl font-black tracking-tighter leading-[0.9] mb-8 uppercase"
             >
               Servis{" "}
-              <span className="text-zinc-600 text-transparent bg-clip-text bg-gradient-to-b from-zinc-500 to-zinc-800">
+              <span className="text-transparent bg-clip-text bg-gradient-to-b from-red-500 to-red-700">
                 Cerdas.
               </span>
               <br />
@@ -585,9 +585,9 @@ export default function LandingPage() {
                 variants={fadeUp}
                 className="bg-zinc-950 border border-zinc-900 p-8 rounded-3xl flex flex-col justify-between"
               >
-                <MessageSquare className="w-8 h-8 text-zinc-800 mb-6" />
+                <MessageSquare className="w-8 h-8 text-zinc-600 mb-6" />
                 <p className="text-zinc-300 text-sm leading-relaxed mb-8">
-                  "{testi.msg}"
+                  &ldquo;{testi.msg}&rdquo;
                 </p>
                 <div className="border-t border-zinc-900 pt-4 mt-auto">
                   <p className="font-bold text-white">{testi.name}</p>

@@ -166,7 +166,7 @@ export default function SuperadminDashboard() {
       }
       htmlContent += "</div>";
       Swal.fire({
-        title: `🕒 Jadwal ${bengkelName}`,
+        title: `Jadwal ${bengkelName}`,
         html: htmlContent,
         background: "#18181b",
         color: "#f4f4f5",
@@ -457,7 +457,7 @@ export default function SuperadminDashboard() {
     );
 
   return (
-    <main className="min-h-screen bg-black text-white font-sans flex overflow-hidden selection:bg-red-600">
+    <main className="min-h-screen bg-zinc-950 text-white font-sans flex overflow-hidden selection:bg-red-600">
       {/* =========================================================
           SIDEBAR KIRI (DESKTOP & MOBILE)
       ========================================================= */}
@@ -1307,10 +1307,10 @@ export default function SuperadminDashboard() {
                                   }
                                   className={`bg-black border border-zinc-800 px-3 py-2 rounded-lg text-xs font-bold outline-none cursor-pointer focus:border-zinc-500 appearance-none text-center min-w-[100px] ${bk.status === "Selesai" ? "text-emerald-500 bg-emerald-500/5" : bk.status === "Batal" ? "text-red-500 bg-red-500/5" : "text-yellow-500 bg-yellow-500/5"}`}
                                 >
-                                  <option value="Menunggu">⏳ Menunggu</option>
-                                  <option value="Diproses">⚙️ Diproses</option>
-                                  <option value="Selesai">✅ Selesai</option>
-                                  <option value="Batal">❌ Batal</option>
+                                  <option value="Menunggu">Menunggu</option>
+                                  <option value="Diproses">Diproses</option>
+                                  <option value="Selesai">Selesai</option>
+                                  <option value="Batal">Batal</option>
                                 </select>
                               </td>
                               <td className="p-4 text-center">
