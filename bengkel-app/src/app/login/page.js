@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Swal from "sweetalert2";
 import { motion } from "framer-motion";
@@ -26,6 +27,7 @@ const staggerContainer = {
 };
 
 export default function LoginPage() {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     whatsapp: "",
     password: "",
@@ -47,17 +49,16 @@ export default function LoginPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(formData),
+          credentials: "same-origin",
         },
       );
 
       const data = await res.json();
 
       if (data.success) {
-        // 1. Simpan sesi ke localStorage
+        // Token sudah di httpOnly cookie (set oleh backend)
+        // Simpan user info ke localStorage untuk UI saja (bukan untuk auth)
         localStorage.setItem("user", JSON.stringify(data.user));
-        localStorage.setItem("user_session", JSON.stringify(data.user));
-        localStorage.setItem("auth_token", data.token);
-        document.cookie = `user_role=${data.role}; path=/; max-age=86400`;
 
         Swal.fire({
           icon: "success",
@@ -68,15 +69,14 @@ export default function LoginPage() {
           timer: 1500,
           showConfirmButton: false,
         }).then(() => {
-          // 2. Arahkan ke rute yang TEPAT berdasarkan Role masing-masing
           if (data.role === "superadmin") {
-            window.location.href = "/superadmin";
+            router.push("/superadmin");
           } else if (data.role === "admin_bengkel") {
-            window.location.href = "/admin";
+            router.push("/admin");
           } else if (data.role === "pelanggan") {
-            window.location.href = "/dashboard";
+            router.push("/dashboard");
           } else {
-            window.location.href = "/";
+            router.push("/");
           }
         });
       } else {

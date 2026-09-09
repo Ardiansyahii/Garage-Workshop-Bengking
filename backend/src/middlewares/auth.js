@@ -1,24 +1,30 @@
 const jwt = require("jsonwebtoken");
 
-// Kunci rahasia untuk membuat dan membuka gembok token (bebas, tapi jangan sampai bocor)
-const SECRET_KEY = process.env.JWT_SECRET || "rahasia_apex_garage_2026";
+const SECRET_KEY = process.env.JWT_SECRET;
+
+if (!SECRET_KEY) {
+  console.error(
+    "FATAL: JWT_SECRET is not set in environment variables. Server cannot start.",
+  );
+  process.exit(1);
+}
 
 const verifyToken = (req, res, next) => {
-  // 1. Ambil token dari header 'Authorization' yang dikirim oleh Frontend
+  // Coba ambil token dari Authorization header DULU
   const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1]; // Formatnya: "Bearer <token>"
+  let token = authHeader && authHeader.split(" ")[1];
 
-  // 2. Jika tidak bawa token, tolak mentah-mentah!
+  // Jika tidak ada, coba ambil dari cookie auth_token
+  if (!token && req.cookies && req.cookies.auth_token) {
+    token = req.cookies.auth_token;
+  }
+
   if (!token) {
     return res
       .status(401)
-      .json({
-        success: false,
-        message: "Akses Ditolak! Token tidak ditemukan.",
-      });
+      .json({ success: false, message: "Akses Ditolak! Token tidak ditemukan." });
   }
 
-  // 3. Jika bawa token, cek apakah tokennya asli buatan kita atau palsu/kadaluarsa
   jwt.verify(token, SECRET_KEY, (err, decoded) => {
     if (err) {
       return res
@@ -29,10 +35,34 @@ const verifyToken = (req, res, next) => {
         });
     }
 
-    // 4. Jika asli, simpan data user ke dalam request agar bisa dipakai oleh controller
     req.user = decoded;
-    next(); // Silakan masuk!
+    next();
   });
 };
 
-module.exports = { verifyToken, SECRET_KEY };
+const authorizeRole = (...allowedRoles) => {
+  return (req, res, next) => {
+    if (!req.user || !req.user.role) {
+      return res
+        .status(403)
+        .json({ success: false, message: "Akses Ditolak! Role tidak ditemukan." });
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      return res
+        .status(403)
+        .json({
+          success: false,
+          message: "Akses Ditolak! Anda tidak memiliki izin yang cukup.",
+        });
+    }
+
+    next();
+  };
+};
+
+const signToken = (payload) => {
+  return jwt.sign(payload, SECRET_KEY, { expiresIn: "24h" });
+};
+
+module.exports = { verifyToken, authorizeRole, signToken };

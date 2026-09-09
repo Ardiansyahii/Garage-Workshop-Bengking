@@ -1,13 +1,23 @@
 const express = require("express");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 
 const app = express();
 
 // ==========================================
 // 1. GLOBAL MIDDLEWARES
 // ==========================================
-app.use(cors());
-app.use(express.json());
+const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:3000";
+app.use(
+  cors({
+    origin: corsOrigin.split(","),
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  }),
+);
+app.use(cookieParser());
+app.use(express.json({ limit: "1mb" }));
 
 // ==========================================
 // 2. IMPORT ROUTES

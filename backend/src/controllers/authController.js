@@ -1,17 +1,20 @@
 const bcrypt = require("bcryptjs");
 const db = require("../config/db");
-const jwt = require("jsonwebtoken");
 const {
   sendWhatsAppNotification,
   normalizeWhatsAppNumber,
 } = require("../utils/fonnte");
-// Perhatikan: Folder middleware sekarang sudah pakai 's' (middlewares)
-const { SECRET_KEY } = require("../middlewares/auth.js");
+const { signToken } = require("../middlewares/auth");
+const {
+  hashPassword,
+  generateOtp,
+  validatePassword,
+} = require("../utils/helpers");
 
 const otpStore = new Map();
 const OTP_TTL_MS = 5 * 60 * 1000;
-
-const generateOtp = () => String(Math.floor(1000 + Math.random() * 9000));
+const MAX_OTP_ATTEMPTS = 5;
+const OTP_LOCKOUT_MS = 15 * 60 * 1000;
 
 const getNormalizedWhatsapp = (value) => {
   if (!value) return null;
@@ -34,8 +37,16 @@ exports.register = async (req, res, next) => {
       });
     }
 
+    const passwordCheck = validatePassword(password);
+    if (!passwordCheck.valid) {
+      return res.status(400).json({
+        success: false,
+        message: passwordCheck.message,
+      });
+    }
+
     const [existingUsers] = await db.query(
-      "SELECT * FROM users WHERE whatsapp = ? OR whatsapp = ?",
+      "SELECT id FROM users WHERE whatsapp = ? OR whatsapp = ?",
       [whatsapp, normalizedWhatsapp],
     );
 
@@ -47,19 +58,20 @@ exports.register = async (req, res, next) => {
     }
 
     const otp = generateOtp();
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const hashedPassword = await hashPassword(password);
 
     otpStore.set(normalizedWhatsapp, {
       name,
       password: hashedPassword,
       otp,
       expiresAt: Date.now() + OTP_TTL_MS,
+      attempts: 0,
+      lockedUntil: null,
     });
 
     const sendResult = await sendWhatsAppNotification(
       normalizedWhatsapp,
-      `Kode OTP Anda untuk verifikasi akun Apex Garage adalah *${otp}*.\n\nKode ini berlaku selama 5 menit.`,
+      `Kode OTP Anda untuk verifikasi akun BengkelKu adalah *${otp}*.\n\nKode ini berlaku selama 5 menit.`,
     );
 
     if (!sendResult || !sendResult.success) {
@@ -81,6 +93,9 @@ exports.register = async (req, res, next) => {
   }
 };
 
+// ==========================================
+// 2. FUNGSI VERIFY OTP
+// ==========================================
 exports.verifyOtp = async (req, res, next) => {
   try {
     const { whatsapp, otp } = req.body;
@@ -103,6 +118,16 @@ exports.verifyOtp = async (req, res, next) => {
       });
     }
 
+    if (pendingData.lockedUntil && Date.now() < pendingData.lockedUntil) {
+      const remainingSec = Math.ceil(
+        (pendingData.lockedUntil - Date.now()) / 1000,
+      );
+      return res.status(429).json({
+        success: false,
+        message: `Terlalu banyak percobaan gagal. Coba lagi dalam ${remainingSec} detik.`,
+      });
+    }
+
     if (Date.now() > pendingData.expiresAt) {
       otpStore.delete(normalizedWhatsapp);
       return res.status(400).json({
@@ -112,9 +137,23 @@ exports.verifyOtp = async (req, res, next) => {
     }
 
     if (String(pendingData.otp) !== String(otp).trim()) {
+      pendingData.attempts = (pendingData.attempts || 0) + 1;
+
+      if (pendingData.attempts >= MAX_OTP_ATTEMPTS) {
+        pendingData.lockedUntil = Date.now() + OTP_LOCKOUT_MS;
+        pendingData.attempts = 0;
+        otpStore.set(normalizedWhatsapp, pendingData);
+        return res.status(429).json({
+          success: false,
+          message:
+            "Terlalu banyak percobaan gagal. Akun dikunci selama 15 menit.",
+        });
+      }
+
+      otpStore.set(normalizedWhatsapp, pendingData);
       return res.status(400).json({
         success: false,
-        message: "Kode OTP yang Anda masukkan salah.",
+        message: `Kode OTP yang Anda masukkan salah. Sisa percobaan: ${MAX_OTP_ATTEMPTS - pendingData.attempts}`,
       });
     }
 
@@ -135,13 +174,12 @@ exports.verifyOtp = async (req, res, next) => {
 };
 
 // ==========================================
-// 2. FUNGSI LOGIN
+// 3. FUNGSI LOGIN — Set httpOnly cookie
 // ==========================================
 exports.login = async (req, res, next) => {
   try {
     const { whatsapp, password } = req.body;
 
-    // Validasi input wajib
     if (!whatsapp || !password) {
       return res.status(400).json({
         success: false,
@@ -149,43 +187,56 @@ exports.login = async (req, res, next) => {
       });
     }
 
-    // Cari user di database
-    const [users] = await db.query("SELECT * FROM users WHERE whatsapp = ?", [
-      whatsapp,
-    ]);
+    const [users] = await db.query(
+      "SELECT id, name, whatsapp, password, role, bengkel_id FROM users WHERE whatsapp = ?",
+      [whatsapp],
+    );
+
     if (users.length === 0) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Nomor WhatsApp tidak terdaftar!" });
+      return res.status(400).json({
+        success: false,
+        message: "Nomor WhatsApp atau password salah!",
+      });
     }
 
     const user = users[0];
 
-    // Cek kecocokan password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Password salah!" });
+      return res.status(400).json({
+        success: false,
+        message: "Nomor WhatsApp atau password salah!",
+      });
     }
 
-    // Generate Token JWT
-    const token = jwt.sign(
-      {
-        id: user.id,
-        role: user.role,
-        bengkel_id: user.bengkel_id,
-      },
-      SECRET_KEY,
-      { expiresIn: "24h" },
-    );
+    const token = signToken({
+      id: user.id,
+      role: user.role,
+      bengkel_id: user.bengkel_id,
+    });
 
-    // Response sukses
+    // Set httpOnly cookie — token tidak bisa diakses dari JavaScript
+    res.cookie("auth_token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000, // 24 jam
+      path: "/",
+    });
+
+    // Set role cookie (readable by middleware untuk route protection)
+    res.cookie("user_role", user.role, {
+      httpOnly: false, // Middleware perlu baca ini
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000,
+      path: "/",
+    });
+
     return res.status(200).json({
       success: true,
       message: `Login berhasil sebagai ${user.role}!`,
       role: user.role,
-      token: token,
       user: {
         id: user.id,
         name: user.name,
@@ -195,7 +246,6 @@ exports.login = async (req, res, next) => {
       },
     });
   } catch (error) {
-    // Serahkan error ke Global Error Handler di app.js
     next(error);
   }
 };

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Swal from "sweetalert2";
 import EmptyState from "@/components/EmptyState";
@@ -43,12 +44,12 @@ const staggerContainer = {
 };
 
 export default function UserDashboard() {
+  const router = useRouter();
   const [user, setUser] = useState(() => {
     const storedUser =
       typeof window !== "undefined"
-        ? localStorage.getItem("user") || localStorage.getItem("user_session")
+        ? localStorage.getItem("user")
         : null;
-
     return storedUser ? JSON.parse(storedUser) : null;
   });
   const [bookings, setBookings] = useState([]);
@@ -89,19 +90,21 @@ export default function UserDashboard() {
 
   useEffect(() => {
     if (!user) {
-      window.location.href = "/login";
+      router.push("/login");
       return;
     }
 
-    localStorage.setItem("user", JSON.stringify(user));
     fetchBookings(user.id);
 
+    // Polling lebih jarang (30 detik) dan stop saat tab hidden
     const interval = setInterval(() => {
-      fetchBookings(user.id);
-    }, 3000);
+      if (document.visibilityState === "visible") {
+        fetchBookings(user.id);
+      }
+    }, 30000);
 
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, router]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -120,15 +123,6 @@ export default function UserDashboard() {
     setIsMobileMenuOpen(false);
   };
 
-  const clearAuthSession = () => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("user_session");
-    document.cookie = "user_role=; path=/; max-age=0";
-    document.cookie =
-      "user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-  };
-
   const handleLogout = () => {
     Swal.fire({
       title: "Keluar Akun",
@@ -141,9 +135,18 @@ export default function UserDashboard() {
       cancelButtonColor: "#27272a",
       background: "#09090b",
       color: "#f4f4f5",
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
-        clearAuthSession();
+        try {
+          await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL || ""}/api/auth/logout`,
+            { method: "POST", credentials: "same-origin" },
+          );
+        } catch {
+          // ignore
+        }
+        localStorage.removeItem("user");
+        document.cookie = "user_role=; path=/; max-age=0";
         window.location.replace("/login");
       }
     });
