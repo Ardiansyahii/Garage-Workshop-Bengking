@@ -12,10 +12,10 @@ import {
   StatusBar,
   KeyboardAvoidingView,
   Platform,
-  Animated,
   Dimensions,
   BackHandler,
 } from "react-native";
+import Animated from "react-native-reanimated";
 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -32,25 +32,15 @@ import {
   Check,
 } from "lucide-react-native";
 
+import API_URL from "../../config/api";
+import { ROUTES } from "../../lib/api";
+
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 // Lebar ScrollView step form = lebar layar dikurangi padding kiri+kanan
 // phaseContainer (20+20). Ini HARUS sama dengan lebar aktual stepScroll
 // (marginHorizontal -22 pada stepScroll membatalkan padding formCard 22+22,
 // jadi lebarnya balik ke lebar phaseContainer, bukan SCREEN_WIDTH penuh).
 const FORM_PAGE_WIDTH = SCREEN_WIDTH - 40;
-
-// Configure URL API dynamically based on environment
-const API_URL = Platform.select({
-  web: "http://localhost:5000",
-  android: "http://10.51.2.60:5000", // khusus Emulator Android
-  default: "http://10.51.2.60:5000", // Ganti dengan IP Wi-Fi laptop kamu jika pakai HP Fisik (Expo Go)
-});
-
-const ROUTES = {
-  home: "/",
-  login: "/Login",
-  verify: "/verify",
-};
 
 // ==========================================
 // KONTEN SLIDE ONBOARDING
@@ -227,7 +217,7 @@ export default function RegisterOnboardingScreen() {
     }
 
     // Sudah di slide paling awal -> keluar dari layar ini
-    router.push(ROUTES.home);
+    router.replace(ROUTES.home);
     return true;
   };
 
@@ -268,6 +258,12 @@ export default function RegisterOnboardingScreen() {
           password: formData.password,
         }),
       });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        Alert.alert("Gagal Mendaftar", errorData.message || "Terjadi kesalahan pada sistem.");
+        return;
+      }
 
       const data = await res.json();
 

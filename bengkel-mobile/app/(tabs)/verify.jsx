@@ -12,28 +12,16 @@ import {
   StatusBar,
   KeyboardAvoidingView,
   Platform,
-  Animated,
   BackHandler,
 } from "react-native";
+import Animated from "react-native-reanimated";
 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Wrench, ArrowLeft, ArrowRight } from "lucide-react-native";
 
-// Samakan dengan API_URL di RegisterScreen/LoginScreen kamu
-const API_URL = Platform.select({
-  web: "http://localhost:5000",
-  android: "http://10.51.2.60:5000", // khusus Emulator Android
-  default: "http://10.51.2.60:5000", // Ganti dengan IP Wi-Fi laptop kamu jika pakai HP Fisik (Expo Go)
-});
-
-// ====================================================================
-// Sesuaikan dengan struktur app/(tabs) project bengkel-mobile kamu.
-// ====================================================================
-const ROUTES = {
-  register: "/Register",
-  login: "/Login",
-};
+import API_URL from "../../config/api";
+import { ROUTES } from "../../lib/api";
 
 export default function VerifyScreen() {
   const router = useRouter();
@@ -125,6 +113,13 @@ export default function VerifyScreen() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ whatsapp, otp }),
       });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        Alert.alert("Gagal Verifikasi", errorData.message || "Kode OTP salah.");
+        return;
+      }
+
       const data = await res.json();
 
       if (res.ok && data.success) {

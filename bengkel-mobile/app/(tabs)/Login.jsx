@@ -10,12 +10,9 @@ import {
   ActivityIndicator,
   StyleSheet,
   Dimensions,
-  Platform,
-  Image,
 } from "react-native";
 
 import { SafeAreaView } from "react-native-safe-area-context";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import {
   Wrench,
@@ -25,29 +22,11 @@ import {
   ArrowRight,
 } from "lucide-react-native";
 
+import API_URL from "../../config/api";
+import { setToken, setUser } from "../../lib/storage";
+import { ROUTES } from "../../lib/api";
+
 const { width } = Dimensions.get("window");
-
-// Samakan dengan API_URL di RegisterScreen/VerifyScreen kamu
-const API_URL = Platform.select({
-  web: "http://localhost:5000",
-  android: "http://10.51.2.60:5000", // khusus Emulator Android
-  default: "http://10.51.2.60:5000", // Ganti dengan IP Wi-Fi laptop kamu jika pakai HP Fisik (Expo Go)
-});
-
-// ====================================================================
-// Sesuaikan dengan struktur app/(tabs) project bengkel-mobile kamu.
-// Yang sudah ada: home ("/"), login ("/Login"), register ("/Register")
-// Yang BELUM ada file-nya (route masih perkiraan, buat dulu filenya):
-//   - registerMitra, dashboard, superAdminDashboard, adminDashboard
-// ====================================================================
-const ROUTES = {
-  home: "/",
-  register: "/Register",
-  registerMitra: "/register-mitra",
-  superAdminDashboard: "/dashboard/superadmin",
-  adminDashboard: "/dashboard/admin",
-  dashboard: "/dashboard",
-};
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -76,21 +55,27 @@ export default function LoginScreen() {
         body: JSON.stringify(formData),
       });
 
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        Alert.alert("Otentikasi Gagal", errorData.message || "Kredensial tidak valid.");
+        setIsLoading(false);
+        return;
+      }
+
       const data = await res.json();
 
       if (data.success) {
-        // 1. Simpan sesi ke AsyncStorage
-        await AsyncStorage.setItem("user", JSON.stringify(data.user));
-        await AsyncStorage.setItem("user_session", JSON.stringify(data.user));
-        await AsyncStorage.setItem("auth_token", data.token);
+        // Simpan token di SecureStore (encrypted)
+        await setToken(data.token || "httpOnly");
+        // Simpan user info
+        await setUser(data.user);
 
         Alert.alert("Akses Diberikan", data.message || "Berhasil masuk!");
 
-        // 2. Arahkan ke screen yang TEPAT berdasarkan Role (auto redirect)
         if (data.role === "superadmin") {
-          router.replace(ROUTES.superAdminDashboard);
+          router.replace(ROUTES.dashboard);
         } else if (data.role === "admin_bengkel") {
-          router.replace(ROUTES.adminDashboard);
+          router.replace(ROUTES.dashboard);
         } else if (data.role === "pelanggan") {
           router.replace(ROUTES.dashboard);
         } else {
@@ -100,7 +85,7 @@ export default function LoginScreen() {
         Alert.alert("Otentikasi Gagal", data.message || "Kredensial tidak valid.");
       }
     } catch (error) {
-      console.log(error);
+      console.error("Login error:", error);
       Alert.alert(
         "Kesalahan Jaringan",
         "Gagal terhubung ke server backend."
@@ -110,13 +95,10 @@ export default function LoginScreen() {
     }
   };
 
-  // Dummy handler untuk login sosial (Google / Facebook).
-  // Ganti isi fungsi ini dengan integrasi OAuth asli nanti
-  // (misal expo-auth-session, firebase auth, dsb).
   const handleSocialLogin = (provider) => {
     Alert.alert(
       `Masuk dengan ${provider}`,
-      `Ini masih tombol dummy untuk ${provider}. Integrasi OAuth belum terhubung ke backend.`,
+      `Ini masih tombol dummy untuk ${provider}.`,
       [{ text: "Oke" }],
     );
   };
@@ -129,7 +111,6 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* HEADER / BACK BUTTON */}
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backBtn}
@@ -140,7 +121,6 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* SECTION INFORMASI */}
         <View style={styles.infoSection}>
           <View style={styles.brandRow}>
             <View style={styles.brandIcon}>
@@ -162,14 +142,12 @@ export default function LoginScreen() {
           </Text>
         </View>
 
-        {/* FORM LOGIN */}
         <View style={styles.formCard}>
           <Text style={styles.formTitle}>Login Portal</Text>
           <Text style={styles.formSubtitle}>
             Masukkan kredensial WhatsApp dan password Anda.
           </Text>
 
-          {/* INPUT WHATSAPP */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>NOMOR WHATSAPP</Text>
             <View style={styles.inputWrapper}>
@@ -185,7 +163,6 @@ export default function LoginScreen() {
             </View>
           </View>
 
-          {/* INPUT PASSWORD */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>PASSWORD</Text>
             <View style={styles.inputWrapper}>
@@ -201,7 +178,6 @@ export default function LoginScreen() {
             </View>
           </View>
 
-          {/* BUTTON SUBMIT */}
           <TouchableOpacity
             style={[styles.submitBtn, isLoading && styles.disabledBtn]}
             onPress={handleLogin}
@@ -220,23 +196,18 @@ export default function LoginScreen() {
             )}
           </TouchableOpacity>
 
-          {/* DIVIDER */}
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
             <Text style={styles.dividerText}>atau lanjutkan dengan</Text>
             <View style={styles.dividerLine} />
           </View>
 
-          {/* SOCIAL LOGIN (DUMMY) */}
           <View style={styles.socialRow}>
             <TouchableOpacity
               style={styles.socialButton}
               onPress={() => handleSocialLogin("Google")}
             >
-              <Image
-                source={{ uri: "https://www.google.com/favicon.ico" }}
-                style={styles.socialIcon}
-              />
+              <Text style={styles.socialIconLetter}>G</Text>
               <Text style={styles.socialButtonText}>Google</Text>
             </TouchableOpacity>
 
@@ -251,7 +222,6 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* FOOTER LINKS */}
           <View style={styles.divider} />
 
           <TouchableOpacity
@@ -265,7 +235,6 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* COPYRIGHT */}
         <Text style={styles.copyrightText}>
           © {new Date().getFullYear()} BENGKELKU. System Access.
         </Text>
@@ -275,210 +244,60 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#000000",
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    flexGrow: 1,
-  },
-  header: {
-    paddingVertical: 16,
-  },
+  container: { flex: 1, backgroundColor: "#000000" },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 40, flexGrow: 1 },
+  header: { paddingVertical: 16 },
   backBtn: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: "row", alignItems: "center",
     backgroundColor: "rgba(24, 24, 27, 0.6)",
-    borderColor: "#27272a",
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    alignSelf: "flex-start",
-    gap: 6,
+    borderColor: "#27272a", borderWidth: 1,
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+    alignSelf: "flex-start", gap: 6,
   },
-  backBtnText: {
-    color: "#a1a1aa",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  infoSection: {
-    marginVertical: 12,
-  },
-  brandRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 16,
-  },
+  backBtnText: { color: "#a1a1aa", fontSize: 12, fontWeight: "600" },
+  infoSection: { marginVertical: 12 },
+  brandRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 16 },
   brandIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "#dc2626",
-    justifyContent: "center",
-    alignItems: "center",
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: "#dc2626", justifyContent: "center", alignItems: "center",
   },
-  brandText: {
-    color: "#FFFFFF",
-    fontSize: 20,
-    fontWeight: "900",
-    letterSpacing: 1,
-  },
-  heroTitle: {
-    color: "#FFFFFF",
-    fontSize: 28,
-    fontWeight: "900",
-    lineHeight: 34,
-    marginBottom: 8,
-  },
-  heroSubtitle: {
-    color: "#a1a1aa",
-    fontSize: 13,
-    lineHeight: 18,
-  },
+  brandText: { color: "#FFFFFF", fontSize: 20, fontWeight: "900", letterSpacing: 1 },
+  heroTitle: { color: "#FFFFFF", fontSize: 28, fontWeight: "900", lineHeight: 34, marginBottom: 8 },
+  heroSubtitle: { color: "#a1a1aa", fontSize: 13, lineHeight: 18 },
   formCard: {
-    backgroundColor: "rgba(9, 9, 11, 0.9)",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 24,
-    padding: 20,
-    marginVertical: 10,
+    backgroundColor: "rgba(9, 9, 11, 0.9)", borderWidth: 1,
+    borderColor: "#27272a", borderRadius: 24, padding: 20, marginVertical: 10,
   },
-  formTitle: {
-    color: "#FFFFFF",
-    fontSize: 22,
-    fontWeight: "900",
-    marginBottom: 4,
-  },
-  formSubtitle: {
-    color: "#a1a1aa",
-    fontSize: 12,
-    marginBottom: 20,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    color: "#a1a1aa",
-    fontSize: 10,
-    fontWeight: "bold",
-    letterSpacing: 1,
-    marginBottom: 6,
-  },
+  formTitle: { color: "#FFFFFF", fontSize: 22, fontWeight: "900", marginBottom: 4 },
+  formSubtitle: { color: "#a1a1aa", fontSize: 12, marginBottom: 20 },
+  inputGroup: { marginBottom: 16 },
+  inputLabel: { color: "#a1a1aa", fontSize: 10, fontWeight: "bold", letterSpacing: 1, marginBottom: 6 },
   inputWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#18181b",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 12,
-    paddingHorizontal: 12,
+    flexDirection: "row", alignItems: "center", backgroundColor: "#18181b",
+    borderWidth: 1, borderColor: "#27272a", borderRadius: 12, paddingHorizontal: 12,
   },
-  inputIcon: {
-    marginRight: 8,
-  },
-  textInput: {
-    flex: 1,
-    color: "#FFFFFF",
-    fontSize: 13,
-    paddingVertical: 12,
-  },
+  inputIcon: { marginRight: 8 },
+  textInput: { flex: 1, color: "#FFFFFF", fontSize: 13, paddingVertical: 12 },
   submitBtn: {
-    backgroundColor: "#dc2626",
-    paddingVertical: 14,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 8,
+    backgroundColor: "#dc2626", paddingVertical: 14, borderRadius: 12,
+    justifyContent: "center", alignItems: "center", marginTop: 8,
   },
-  disabledBtn: {
-    backgroundColor: "#27272a",
-  },
-  submitBtnText: {
-    color: "#FFFFFF",
-    fontWeight: "bold",
-    fontSize: 14,
-  },
-  loadingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-
-  // DIVIDER ("atau lanjutkan dengan")
-  dividerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    width: "100%",
-    marginTop: 20,
-    marginBottom: 14,
-    gap: 10,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "rgba(82,82,91,0.6)",
-  },
-  dividerText: {
-    color: "#a1a1aa",
-    fontSize: 11,
-    fontWeight: "600",
-  },
-
-  // SOCIAL LOGIN BUTTONS (DUMMY)
-  socialRow: {
-    flexDirection: "row",
-    width: "100%",
-    gap: 12,
-  },
+  disabledBtn: { backgroundColor: "#27272a" },
+  submitBtnText: { color: "#FFFFFF", fontWeight: "bold", fontSize: 14 },
+  loadingRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  dividerRow: { flexDirection: "row", alignItems: "center", width: "100%", marginTop: 20, marginBottom: 14, gap: 10 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: "rgba(82,82,91,0.6)" },
+  dividerText: { color: "#a1a1aa", fontSize: 11, fontWeight: "600" },
+  socialRow: { flexDirection: "row", width: "100%", gap: 12 },
   socialButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#fff",
-    paddingVertical: 14,
-    borderRadius: 12,
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, backgroundColor: "#fff", paddingVertical: 14, borderRadius: 12,
   },
-  socialIcon: {
-    width: 16,
-    height: 16,
-  },
-  socialIconLetter: {
-    fontSize: 15,
-    fontWeight: "900",
-  },
-  socialButtonText: {
-    color: "#18181b",
-    fontSize: 12,
-    fontWeight: "800",
-  },
-
-  divider: {
-    height: 1,
-    backgroundColor: "#27272a",
-    marginVertical: 16,
-  },
-  linkContainer: {
-    alignItems: "center",
-  },
-  linkText: {
-    color: "#a1a1aa",
-    fontSize: 11,
-    textAlign: "center",
-  },
-  highlightText: {
-    color: "#ef4444",
-    fontWeight: "bold",
-  },
-  copyrightText: {
-    color: "#52525b",
-    fontSize: 10,
-    textAlign: "center",
-    marginTop: 20,
-  },
+  socialIconLetter: { fontSize: 15, fontWeight: "900", color: "#18181b" },
+  socialButtonText: { color: "#18181b", fontSize: 12, fontWeight: "800" },
+  divider: { height: 1, backgroundColor: "#27272a", marginVertical: 16 },
+  linkContainer: { alignItems: "center" },
+  linkText: { color: "#a1a1aa", fontSize: 11, textAlign: "center" },
+  highlightText: { color: "#ef4444", fontWeight: "bold" },
+  copyrightText: { color: "#52525b", fontSize: 10, textAlign: "center", marginTop: 20 },
 });
