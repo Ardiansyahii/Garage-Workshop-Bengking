@@ -1,17 +1,15 @@
 const express = require("express");
 const router = express.Router();
 const superadminBookingController = require("../controllers/superadminBookingController");
-// Panggil satpam JWT untuk melindungi rute
-const { verifyToken } = require("../middlewares/auth");
+const { verifyToken, authorizeRole } = require("../middlewares/auth");
 
-// ==========================================
-// ROUTES UNTUK SUPERADMIN BOOKINGS (DILINDUNGI JWT)
-// ==========================================
+// Semua routes di sini khusus Superadmin
 
 // GET /api/superadmin-bookings -> Ambil semua booking global
 router.get(
   "/",
   verifyToken,
+  authorizeRole("superadmin"),
   superadminBookingController.getAllSuperadminBookings,
 );
 
@@ -19,6 +17,7 @@ router.get(
 router.put(
   "/:id",
   verifyToken,
+  authorizeRole("superadmin"),
   superadminBookingController.updateSuperadminBookingStatus,
 );
 
@@ -26,6 +25,7 @@ router.put(
 router.delete(
   "/:id",
   verifyToken,
+  authorizeRole("superadmin"),
   superadminBookingController.deleteSuperadminBooking,
 );
 

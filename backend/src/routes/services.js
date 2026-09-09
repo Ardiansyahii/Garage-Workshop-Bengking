@@ -1,20 +1,25 @@
 const express = require("express");
 const router = express.Router();
 const serviceController = require("../controllers/serviceController");
-// Panggil satpam JWT untuk melindungi rute ini
-const { verifyToken } = require("../middlewares/auth");
+const { verifyToken, authorizeRole } = require("../middlewares/auth");
 
-// ==========================================
-// ROUTES UNTUK LAYANAN BENGKEL (DILINDUNGI JWT)
-// ==========================================
-
-// GET /api/services -> Ambil daftar layanan (Bisa difilter per bengkel_id)
+// GET /api/services -> Ambil daftar layanan (Semua role yang login)
 router.get("/", verifyToken, serviceController.getAllServices);
 
-// POST /api/services -> Tambah layanan baru
-router.post("/", verifyToken, serviceController.createService);
+// POST /api/services -> Tambah layanan baru (Admin bengkel & Superadmin)
+router.post(
+  "/",
+  verifyToken,
+  authorizeRole("admin_bengkel", "superadmin"),
+  serviceController.createService,
+);
 
-// DELETE /api/services/:id -> Hapus layanan
-router.delete("/:id", verifyToken, serviceController.deleteService);
+// DELETE /api/services/:id -> Hapus layanan (Admin bengkel & Superadmin)
+router.delete(
+  "/:id",
+  verifyToken,
+  authorizeRole("admin_bengkel", "superadmin"),
+  serviceController.deleteService,
+);
 
 module.exports = router;

@@ -1,9 +1,3 @@
-/**
- * Helper untuk mengirim pesan WhatsApp melalui Fonnte API
- * @param {string} target - Nomor WhatsApp tujuan (Contoh: 08123456789 atau 628...)
- * @param {string} message - Isi pesan yang ingin dikirim
- * @param {object} options - Opsi tambahan payload Fonnte (opsional)
- */
 const normalizeWhatsAppNumber = (target) => {
   if (!target || typeof target !== "string") {
     return null;
@@ -28,14 +22,12 @@ const sendWhatsAppNotification = async (target, message, options = {}) => {
     const normalizedTarget = normalizeWhatsAppNumber(target);
 
     if (!token) {
-      console.warn("⚠️ Fonnte Token belum diatur di file .env");
+      console.warn("Fonnte Token belum diatur di file .env");
       return { success: false, message: "Token Fonnte belum diatur." };
     }
 
     if (!normalizedTarget) {
-      console.warn(
-        "⚠️ Nomor WhatsApp tujuan tidak valid, pengiriman Fonnte dilewati.",
-      );
+      console.warn("Nomor WhatsApp tujuan tidak valid.");
       return { success: false, message: "Nomor WhatsApp tujuan tidak valid." };
     }
 
@@ -60,14 +52,6 @@ const sendWhatsAppNotification = async (target, message, options = {}) => {
 
         const data = await response.json().catch(() => ({}));
 
-        // TAMBAHAN: log respons ASLI dari Fonnte, baik sukses maupun gagal.
-        // Ini kunci debugging-nya: lihat isi 'data' persis apa yang dibalas
-        // Fonnte (status, reason, detail, device, dll).
-        console.log(
-          `📩 [Fonnte] target=${normalizedTarget} httpStatus=${response.status} response=`,
-          JSON.stringify(data),
-        );
-
         if (!response.ok || data?.status === false || data?.error) {
           lastError =
             data?.message || data?.reason || `HTTP ${response.status}`;
@@ -78,7 +62,6 @@ const sendWhatsAppNotification = async (target, message, options = {}) => {
           return {
             success: false,
             message: lastError,
-            data,
           };
         }
 
@@ -104,10 +87,10 @@ const sendWhatsAppNotification = async (target, message, options = {}) => {
       message: lastError || "Gagal mengirim WhatsApp via Fonnte.",
     };
   } catch (error) {
-    console.error("🔥 Gagal mengirim pesan WhatsApp via Fonnte:", error);
+    console.error("Gagal mengirim pesan WhatsApp via Fonnte:", error.message);
     return {
       success: false,
-      message: error.message,
+      message: "Gagal mengirim pesan WhatsApp.",
     };
   }
 };
