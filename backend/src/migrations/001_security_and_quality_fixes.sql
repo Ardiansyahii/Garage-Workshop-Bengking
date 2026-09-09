@@ -3,204 +3,208 @@
 -- Branch: fix/backend-security-and-quality
 -- ==========================================
 
--- 1. Tambah UNIQUE constraint ke users.whatsapp
--- (Cek dulu apakah constraint sudah ada)
-SET @exists = (
+-- Helper procedure to safely add index if not exists
+DELIMITER //
+
+CREATE PROCEDURE IF NOT EXISTS safe_add_index(
+  IN p_table_name VARCHAR(64),
+  IN p_index_name VARCHAR(64),
+  IN p_columns VARCHAR(255)
+)
+BEGIN
+  DECLARE idx_count INT DEFAULT 0;
+  SELECT COUNT(*) INTO idx_count
+  FROM information_schema.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = p_table_name
+    AND INDEX_NAME = p_index_name;
+  IF idx_count = 0 THEN
+    SET @sql = CONCAT('CREATE INDEX ', p_index_name, ' ON ', p_table_name, '(', p_columns, ')');
+    PREPARE stmt FROM @sql;
+    EXECUTE stmt;
+    DEALLOCATE PREPARE stmt;
+  END IF;
+END //
+
+DELIMITER ;
+
+-- 1. UNIQUE constraint: users.whatsapp
+SET @uk_exists = (
   SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
   WHERE CONSTRAINT_SCHEMA = DATABASE()
     AND TABLE_NAME = 'users'
     AND CONSTRAINT_TYPE = 'UNIQUE'
     AND CONSTRAINT_NAME = 'uk_users_whatsapp'
 );
-
-SET @sql = IF(@exists = 0,
+SET @sql_uk = IF(@uk_exists = 0,
   'ALTER TABLE users ADD CONSTRAINT uk_users_whatsapp UNIQUE (whatsapp)',
-  'SELECT "UNIQUE constraint already exists" as info'
+  'SELECT 1'
 );
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+PREPARE stmt_uk FROM @sql_uk;
+EXECUTE stmt_uk;
+DEALLOCATE PREPARE stmt_uk;
 
--- 2. Tambah UNIQUE constraint ke schedules(bengkel_id, day_name)
-SET @exists2 = (
+-- 2. UNIQUE constraint: schedules(bengkel_id, day_name)
+SET @uk2_exists = (
   SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
   WHERE CONSTRAINT_SCHEMA = DATABASE()
     AND TABLE_NAME = 'schedules'
     AND CONSTRAINT_TYPE = 'UNIQUE'
     AND CONSTRAINT_NAME = 'uk_schedules_bengkel_day'
 );
-
-SET @sql2 = IF(@exists2 = 0,
+SET @sql_uk2 = IF(@uk2_exists = 0,
   'ALTER TABLE schedules ADD CONSTRAINT uk_schedules_bengkel_day UNIQUE (bengkel_id, day_name)',
-  'SELECT "UNIQUE constraint already exists" as info'
+  'SELECT 1'
 );
-PREPARE stmt2 FROM @sql2;
-EXECUTE stmt2;
-DEALLOCATE PREPARE stmt2;
+PREPARE stmt_uk2 FROM @sql_uk2;
+EXECUTE stmt_uk2;
+DEALLOCATE PREPARE stmt_uk2;
 
 -- 3. Tambah indexes untuk performa query
-CREATE INDEX IF NOT EXISTS idx_users_whatsapp ON users(whatsapp);
-CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
-CREATE INDEX IF NOT EXISTS idx_users_role_bengkel ON users(role, bengkel_id);
-CREATE INDEX IF NOT EXISTS idx_vehicles_user_id ON vehicles(user_id);
-CREATE INDEX IF NOT EXISTS idx_services_bengkel_id ON services(bengkel_id);
-CREATE INDEX IF NOT EXISTS idx_schedules_bengkel_id ON schedules(bengkel_id);
-CREATE INDEX IF NOT EXISTS idx_bookings_user_id ON bookings(user_id);
-CREATE INDEX IF NOT EXISTS idx_bookings_bengkel_id ON bookings(bengkel_id);
-CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
-CREATE INDEX IF NOT EXISTS idx_bookings_date_time ON bookings(booking_date, booking_time);
-CREATE INDEX IF NOT EXISTS idx_bookings_code ON bookings(booking_code);
-CREATE INDEX IF NOT EXISTS idx_mitra_requests_status ON mitra_requests(status);
-CREATE INDEX IF NOT EXISTS idx_mitra_requests_whatsapp_status ON mitra_requests(whatsapp, status);
+CALL safe_add_index('users', 'idx_users_whatsapp', 'whatsapp');
+CALL safe_add_index('users', 'idx_users_role', 'role');
+CALL safe_add_index('users', 'idx_users_role_bengkel', 'role, bengkel_id');
+CALL safe_add_index('vehicles', 'idx_vehicles_user_id', 'user_id');
+CALL safe_add_index('services', 'idx_services_bengkel_id', 'bengkel_id');
+CALL safe_add_index('schedules', 'idx_schedules_bengkel_id', 'bengkel_id');
+CALL safe_add_index('bookings', 'idx_bookings_user_id', 'user_id');
+CALL safe_add_index('bookings', 'idx_bookings_bengkel_id', 'bengkel_id');
+CALL safe_add_index('bookings', 'idx_bookings_status', 'status');
+CALL safe_add_index('bookings', 'idx_bookings_date_time', 'booking_date, booking_time');
+CALL safe_add_index('bookings', 'idx_bookings_code', 'booking_code');
+CALL safe_add_index('mitra_requests', 'idx_mitra_requests_status', 'status');
+CALL safe_add_index('mitra_requests', 'idx_mitra_requests_whatsapp_status', 'whatsapp, status');
 
--- 4. Tambah ENUM constraint ke bookings.status (opsional, gunakan CHECK constraint)
--- MySQL 8.0.16+ supports CHECK constraints
-SET @mysql_version = (SELECT VERSION());
-SET @check_exists = (
-  SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
-  WHERE CONSTRAINT_SCHEMA = DATABASE()
-    AND TABLE_NAME = 'bookings'
-    AND CONSTRAINT_TYPE = 'CHECK'
-);
-
--- 5. Pastikan bookings.status ENUM via CHECK constraint
--- (Hanya jalankan jika MySQL >= 8.0.16 dan constraint belum ada)
--- SET @sql3 = IF(@check_exists = 0 AND @mysql_version >= '8.0.16',
---   'ALTER TABLE bookings ADD CONSTRAINT chk_bookings_status CHECK (status IN ('Menunggu', 'Diproses', 'Selesai', 'Batal'))',
---   'SELECT "CHECK constraint skipped" as info'
--- );
--- PREPARE stmt3 FROM @sql3;
--- EXECUTE stmt3;
--- DEALLOCATE PREPARE stmt3;
-
--- 6. Tambah foreign key constraints
-SET @fk_exists = (
+-- 4. Foreign key: bookings.user_id -> users.id
+SET @fk1 = (
   SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
   WHERE CONSTRAINT_SCHEMA = DATABASE()
     AND TABLE_NAME = 'bookings'
     AND CONSTRAINT_TYPE = 'FOREIGN KEY'
     AND CONSTRAINT_NAME = 'fk_bookings_user'
 );
-
-SET @sql_fk = IF(@fk_exists = 0,
+SET @sql_fk1 = IF(@fk1 = 0,
   'ALTER TABLE bookings ADD CONSTRAINT fk_bookings_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE',
-  'SELECT "FK constraint already exists" as info'
+  'SELECT 1'
 );
-PREPARE stmt_fk FROM @sql_fk;
-EXECUTE stmt_fk;
-DEALLOCATE PREPARE stmt_fk;
+PREPARE stmt_fk1 FROM @sql_fk1;
+EXECUTE stmt_fk1;
+DEALLOCATE PREPARE stmt_fk1;
 
-SET @fk_exists2 = (
+-- 5. Foreign key: bookings.bengkel_id -> bengkels.id
+SET @fk2 = (
   SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
   WHERE CONSTRAINT_SCHEMA = DATABASE()
     AND TABLE_NAME = 'bookings'
     AND CONSTRAINT_TYPE = 'FOREIGN KEY'
     AND CONSTRAINT_NAME = 'fk_bookings_bengkel'
 );
-
-SET @sql_fk2 = IF(@fk_exists2 = 0,
+SET @sql_fk2 = IF(@fk2 = 0,
   'ALTER TABLE bookings ADD CONSTRAINT fk_bookings_bengkel FOREIGN KEY (bengkel_id) REFERENCES bengkels(id) ON DELETE CASCADE',
-  'SELECT "FK constraint already exists" as info'
+  'SELECT 1'
 );
 PREPARE stmt_fk2 FROM @sql_fk2;
 EXECUTE stmt_fk2;
 DEALLOCATE PREPARE stmt_fk2;
 
-SET @fk_exists3 = (
+-- 6. Foreign key: bookings.vehicle_id -> vehicles.id
+SET @fk3 = (
   SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
   WHERE CONSTRAINT_SCHEMA = DATABASE()
     AND TABLE_NAME = 'bookings'
     AND CONSTRAINT_TYPE = 'FOREIGN KEY'
     AND CONSTRAINT_NAME = 'fk_bookings_vehicle'
 );
-
-SET @sql_fk3 = IF(@fk_exists3 = 0,
+SET @sql_fk3 = IF(@fk3 = 0,
   'ALTER TABLE bookings ADD CONSTRAINT fk_bookings_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE',
-  'SELECT "FK constraint already exists" as info'
+  'SELECT 1'
 );
 PREPARE stmt_fk3 FROM @sql_fk3;
 EXECUTE stmt_fk3;
 DEALLOCATE PREPARE stmt_fk3;
 
-SET @fk_exists4 = (
+-- 7. Foreign key: bookings.service_id -> services.id
+SET @fk4 = (
   SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
   WHERE CONSTRAINT_SCHEMA = DATABASE()
     AND TABLE_NAME = 'bookings'
     AND CONSTRAINT_TYPE = 'FOREIGN KEY'
     AND CONSTRAINT_NAME = 'fk_bookings_service'
 );
-
-SET @sql_fk4 = IF(@fk_exists4 = 0,
+SET @sql_fk4 = IF(@fk4 = 0,
   'ALTER TABLE bookings ADD CONSTRAINT fk_bookings_service FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE',
-  'SELECT "FK constraint already exists" as info'
+  'SELECT 1'
 );
 PREPARE stmt_fk4 FROM @sql_fk4;
 EXECUTE stmt_fk4;
 DEALLOCATE PREPARE stmt_fk4;
 
-SET @fk_exists5 = (
+-- 8. Foreign key: vehicles.user_id -> users.id
+SET @fk5 = (
   SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
   WHERE CONSTRAINT_SCHEMA = DATABASE()
     AND TABLE_NAME = 'vehicles'
     AND CONSTRAINT_TYPE = 'FOREIGN KEY'
     AND CONSTRAINT_NAME = 'fk_vehicles_user'
 );
-
-SET @sql_fk5 = IF(@fk_exists5 = 0,
+SET @sql_fk5 = IF(@fk5 = 0,
   'ALTER TABLE vehicles ADD CONSTRAINT fk_vehicles_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE',
-  'SELECT "FK constraint already exists" as info'
+  'SELECT 1'
 );
 PREPARE stmt_fk5 FROM @sql_fk5;
 EXECUTE stmt_fk5;
 DEALLOCATE PREPARE stmt_fk5;
 
-SET @fk_exists6 = (
+-- 9. Foreign key: services.bengkel_id -> bengkels.id
+SET @fk6 = (
   SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
   WHERE CONSTRAINT_SCHEMA = DATABASE()
     AND TABLE_NAME = 'services'
     AND CONSTRAINT_TYPE = 'FOREIGN KEY'
     AND CONSTRAINT_NAME = 'fk_services_bengkel'
 );
-
-SET @sql_fk6 = IF(@fk_exists6 = 0,
+SET @sql_fk6 = IF(@fk6 = 0,
   'ALTER TABLE services ADD CONSTRAINT fk_services_bengkel FOREIGN KEY (bengkel_id) REFERENCES bengkels(id) ON DELETE CASCADE',
-  'SELECT "FK constraint already exists" as info'
+  'SELECT 1'
 );
 PREPARE stmt_fk6 FROM @sql_fk6;
 EXECUTE stmt_fk6;
 DEALLOCATE PREPARE stmt_fk6;
 
-SET @fk_exists7 = (
+-- 10. Foreign key: schedules.bengkel_id -> bengkels.id
+SET @fk7 = (
   SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
   WHERE CONSTRAINT_SCHEMA = DATABASE()
     AND TABLE_NAME = 'schedules'
     AND CONSTRAINT_TYPE = 'FOREIGN KEY'
     AND CONSTRAINT_NAME = 'fk_schedules_bengkel'
 );
-
-SET @sql_fk7 = IF(@fk_exists7 = 0,
+SET @sql_fk7 = IF(@fk7 = 0,
   'ALTER TABLE schedules ADD CONSTRAINT fk_schedules_bengkel FOREIGN KEY (bengkel_id) REFERENCES bengkels(id) ON DELETE CASCADE',
-  'SELECT "FK constraint already exists" as info'
+  'SELECT 1'
 );
 PREPARE stmt_fk7 FROM @sql_fk7;
 EXECUTE stmt_fk7;
 DEALLOCATE PREPARE stmt_fk7;
 
-SET @fk_exists8 = (
+-- 11. Foreign key: users.bengkel_id -> bengkels.id
+SET @fk8 = (
   SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
   WHERE CONSTRAINT_SCHEMA = DATABASE()
     AND TABLE_NAME = 'users'
     AND CONSTRAINT_TYPE = 'FOREIGN KEY'
     AND CONSTRAINT_NAME = 'fk_users_bengkel'
 );
-
-SET @sql_fk8 = IF(@fk_exists8 = 0,
+SET @sql_fk8 = IF(@fk8 = 0,
   'ALTER TABLE users ADD CONSTRAINT fk_users_bengkel FOREIGN KEY (bengkel_id) REFERENCES bengkels(id) ON DELETE SET NULL',
-  'SELECT "FK constraint already exists" as info'
+  'SELECT 1'
 );
 PREPARE stmt_fk8 FROM @sql_fk8;
 EXECUTE stmt_fk8;
 DEALLOCATE PREPARE stmt_fk8;
+
+-- Cleanup: drop helper procedure
+DROP PROCEDURE IF EXISTS safe_add_index;
 
 -- Migration selesai
 SELECT 'Migration 001_security_and_quality_fixes applied successfully!' as result;
