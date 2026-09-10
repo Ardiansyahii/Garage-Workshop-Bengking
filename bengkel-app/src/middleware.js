@@ -1,23 +1,31 @@
 import { NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
 
-const SECRET_KEY = process.env.JWT_SECRET;
+function decodeJwtPayload(token) {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join(""),
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return null;
+  }
+}
 
-export function proxy(request) {
+export function middleware(request) {
   const path = request.nextUrl.pathname;
 
-  // Ambil token dari cookie auth_token (httpOnly)
   const authToken = request.cookies.get("auth_token")?.value;
 
-  // Decode JWT untuk dapat role (tanpa verify — middleware hanya cek existence)
   let role = null;
-  if (authToken && SECRET_KEY) {
-    try {
-      const decoded = jwt.verify(authToken, SECRET_KEY);
-      role = decoded.role;
-    } catch {
-      // Token invalid atau expired — anggap belum login
-      role = null;
+  if (authToken) {
+    const payload = decodeJwtPayload(authToken);
+    if (payload && payload.exp && payload.exp * 1000 > Date.now()) {
+      role = payload.role;
     }
   }
 

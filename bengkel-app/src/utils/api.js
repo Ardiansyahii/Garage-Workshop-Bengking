@@ -20,7 +20,7 @@ export async function fetchWithAuth(endpoint, options = {}) {
   const requestOptions = {
     ...options,
     headers,
-    credentials: "same-origin", // Kirim cookie otomatis
+    credentials: "include", // Kirim cookie silang port (localhost:3000 -> :4000)
   };
 
   const finalUrl = endpoint.startsWith("http")
