@@ -42,7 +42,7 @@ export default function BookingPage() {
 
   // 1. Cek Sesi & Ambil Daftar Bengkel
   useEffect(() => {
-    const session = localStorage.getItem("user_session");
+    const session = localStorage.getItem("user");
     if (!session) {
       Swal.fire({
         icon: "warning",
@@ -228,7 +228,7 @@ export default function BookingPage() {
           color: "#f4f4f5",
           confirmButtonColor: "#dc2626",
         }).then(() => {
-          window.location.href = "/"; // Atau arahkan ke dashboard pelanggan jika sudah ada
+          window.location.href = "/dashboard";
         });
       } else {
         Swal.fire({

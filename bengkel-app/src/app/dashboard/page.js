@@ -62,13 +62,10 @@ export default function UserDashboard() {
 
   const tabs = [
     "Semua",
-    "Pending",
-    "Menunggu Pembatalan",
-    "Menunggu Reschedule",
-    "Dikonfirmasi",
-    "Sedang Dikerjakan",
+    "Menunggu",
+    "Diproses",
     "Selesai",
-    "Dibatalkan",
+    "Batal",
   ];
 
   // ==========================================
@@ -298,34 +295,16 @@ export default function UserDashboard() {
 
   const getStatusBadge = (status) => {
     switch (status) {
-      case "Pending":
+      case "Menunggu":
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20">
-            <Clock className="w-3.5 h-3.5" /> Pending
+            <Clock className="w-3.5 h-3.5" /> Menunggu
           </span>
         );
-      case "Menunggu Pembatalan":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider bg-orange-500/10 text-orange-400 border border-orange-500/20">
-            <AlertCircle className="w-3.5 h-3.5" /> Menunggu Pembatalan
-          </span>
-        );
-      case "Menunggu Reschedule":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider bg-purple-500/10 text-purple-400 border border-purple-500/20">
-            <Calendar className="w-3.5 h-3.5" /> Menunggu Reschedule
-          </span>
-        );
-      case "Dikonfirmasi":
+      case "Diproses":
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider bg-blue-500/10 text-blue-400 border border-blue-500/20">
-            <CheckCircle2 className="w-3.5 h-3.5" /> Dikonfirmasi
-          </span>
-        );
-      case "Sedang Dikerjakan":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider bg-purple-500/10 text-purple-400 border border-purple-500/20">
-            <Wrench className="w-3.5 h-3.5 animate-spin" /> Sedang Dikerjakan
+            <Wrench className="w-3.5 h-3.5 animate-spin" /> Diproses
           </span>
         );
       case "Selesai":
@@ -334,11 +313,10 @@ export default function UserDashboard() {
             <CheckCircle2 className="w-3.5 h-3.5" /> Selesai
           </span>
         );
-      case "Dibatalkan":
-      case "Cancelled":
+      case "Batal":
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider bg-red-500/10 text-red-500 border border-red-500/20">
-            <XCircle className="w-3.5 h-3.5" /> Dibatalkan
+            <XCircle className="w-3.5 h-3.5" /> Batal
           </span>
         );
       default:
@@ -352,11 +330,11 @@ export default function UserDashboard() {
 
   const statTotal = bookings.length;
   const statDikerjakan = bookings.filter(
-    (b) => b.status === "Sedang Dikerjakan",
+    (b) => b.status === "Diproses",
   ).length;
   const statSelesai = bookings.filter((b) => b.status === "Selesai").length;
   const statBatal = bookings.filter(
-    (b) => b.status === "Dibatalkan" || b.status === "Cancelled",
+    (b) => b.status === "Batal",
   ).length;
 
   const stats = [
@@ -368,7 +346,7 @@ export default function UserDashboard() {
       bg: "bg-blue-600/10 border-blue-600/20",
     },
     {
-      label: "Sedang Dikerjakan",
+      label: "Sedang Diproses",
       value: statDikerjakan,
       icon: Wrench,
       accent: "text-purple-500",
@@ -409,11 +387,8 @@ export default function UserDashboard() {
   // PANEL KANAN: helper display-only (tidak mengubah logika booking)
   // ==========================================
   const ACTIVE_BOOKING_STATUSES = [
-    "Pending",
-    "Menunggu Pembatalan",
-    "Menunggu Reschedule",
-    "Dikonfirmasi",
-    "Sedang Dikerjakan",
+    "Menunggu",
+    "Diproses",
   ];
 
   const activeBookings = bookings
@@ -431,22 +406,16 @@ export default function UserDashboard() {
       .sort((a, b) => a.ts - b.ts)[0]?.booking || null;
 
   const timelineSteps = [
-    { key: "Pending", label: "Pesanan Dibuat", icon: FileText },
-    { key: "Dikonfirmasi", label: "Dikonfirmasi", icon: CheckCircle2 },
-    { key: "Sedang Dikerjakan", label: "Sedang Dikerjakan", icon: Wrench },
+    { key: "Menunggu", label: "Pesanan Dibuat", icon: FileText },
+    { key: "Diproses", label: "Diproses", icon: Wrench },
     { key: "Selesai", label: "Selesai", icon: CheckCircle2 },
   ];
 
   const getTimelineIndex = (status) => {
-    if (
-      status === "Pending" ||
-      status === "Menunggu Pembatalan" ||
-      status === "Menunggu Reschedule"
-    )
-      return 0;
-    if (status === "Dikonfirmasi") return 1;
-    if (status === "Sedang Dikerjakan") return 2;
-    if (status === "Selesai" || status === "Cancelled") return 3;
+    if (status === "Menunggu") return 0;
+    if (status === "Diproses") return 1;
+    if (status === "Selesai") return 2;
+    if (status === "Batal") return 3;
     return -1;
   };
 
@@ -883,8 +852,8 @@ export default function UserDashboard() {
                             </p>
                           </div>
 
-                          {(booking.status === "Pending" ||
-                            booking.status === "Dikonfirmasi") && (
+                          {(booking.status === "Menunggu" ||
+                            booking.status === "Diproses") && (
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={() =>
@@ -907,7 +876,7 @@ export default function UserDashboard() {
                         </div>
                       </div>
 
-                      {booking.status === "Sedang Dikerjakan" && (
+                      {booking.status === "Diproses" && (
                         <div className="mt-5 pt-4 border-t border-zinc-900 flex items-center gap-2 text-purple-400 text-xs font-semibold animate-pulse">
                           <Wrench className="w-4 h-4 animate-spin" /> Mekanik
                           sedang menangani perbaikan kendaraanmu di bengkel.
