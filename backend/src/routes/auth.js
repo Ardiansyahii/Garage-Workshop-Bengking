@@ -13,8 +13,16 @@ router.post("/verify-otp", authController.verifyOtp);
 
 // POST /api/auth/logout — clear httpOnly cookies
 router.post("/logout", (req, res) => {
-  res.clearCookie("auth_token", { path: "/" });
-  res.clearCookie("user_role", { path: "/" });
+  const clearOptions = {
+    path: "/",
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+  };
+
+  res.clearCookie("auth_token", clearOptions);
+  res.clearCookie("user_role", { ...clearOptions, httpOnly: false });
+
   return res.status(200).json({
     success: true,
     message: "Logout berhasil.",

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Swal from "sweetalert2";
 import EmptyState from "@/components/EmptyState";
@@ -44,13 +43,19 @@ const staggerContainer = {
 };
 
 export default function UserDashboard() {
-  const router = useRouter();
   const [user, setUser] = useState(() => {
     const storedUser =
       typeof window !== "undefined"
         ? localStorage.getItem("user")
         : null;
-    return storedUser ? JSON.parse(storedUser) : null;
+    if (!storedUser) return null;
+    try {
+      const parsed = JSON.parse(storedUser);
+      if (parsed.role !== "pelanggan") return null;
+      return parsed;
+    } catch {
+      return null;
+    }
   });
   const [bookings, setBookings] = useState([]);
   const [activeTab, setActiveTab] = useState("Semua");
@@ -87,7 +92,20 @@ export default function UserDashboard() {
 
   useEffect(() => {
     if (!user) {
-      router.push("/login");
+      // localStorage kosong — coba fetch profile dari API pakai JWT cookie
+      fetchWithAuth("/api/profile")
+        .then((data) => {
+          if (data?.success && data.data) {
+            const profile = data.data;
+            if (profile.role === "pelanggan") {
+              localStorage.setItem("user", JSON.stringify(profile));
+              setUser(profile);
+            }
+          }
+        })
+        .catch(() => {
+          // fetchWithAuth handle redirect ke /login jika 401
+        });
       return;
     }
 
@@ -101,7 +119,7 @@ export default function UserDashboard() {
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [user, router]);
+  }, [user]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -135,10 +153,10 @@ export default function UserDashboard() {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL || ""}/api/auth/logout`,
-            { method: "POST", credentials: "same-origin" },
-          );
+          await fetch("/api/auth/logout", {
+            method: "POST",
+            credentials: "same-origin",
+          });
         } catch {
           // ignore
         }
@@ -434,6 +452,8 @@ export default function UserDashboard() {
       </div>
     );
   }
+
+  if (!user) return null;
 
   return (
     <main className="relative min-h-screen bg-zinc-950 text-white font-sans flex overflow-hidden selection:bg-red-600 selection:text-white">

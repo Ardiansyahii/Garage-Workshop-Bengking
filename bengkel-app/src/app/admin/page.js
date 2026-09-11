@@ -54,13 +54,31 @@ export default function AdminBengkelDashboard() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    try {
-      const session = localStorage.getItem("user");
-      if (!session) {
-        router.push("/login");
-        return;
-      }
+    const session = localStorage.getItem("user");
+    if (!session) {
+      // localStorage kosong — coba fetch profile dari API pakai JWT cookie
+      fetchWithAuth("/api/profile")
+        .then((data) => {
+          if (data?.success && data.data) {
+            const profile = data.data;
+            if (profile.role === "admin_bengkel" && profile.bengkel_id) {
+              localStorage.setItem("user", JSON.stringify(profile));
+              setUser(profile);
+            } else {
+              router.push("/login");
+            }
+          }
+        })
+        .catch(() => {
+          // fetchWithAuth handle redirect ke /login jika 401
+        })
+        .finally(() => {
+          setHasMounted(true);
+        });
+      return;
+    }
 
+    try {
       const parsedUser = JSON.parse(session);
       if (parsedUser.role !== "admin_bengkel" || !parsedUser.bengkel_id) {
         router.push("/login");
@@ -71,9 +89,8 @@ export default function AdminBengkelDashboard() {
     } catch (error) {
       router.push("/login");
       return;
-    } finally {
-      setHasMounted(true);
     }
+    setHasMounted(true);
   }, [router]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
@@ -213,10 +230,10 @@ export default function AdminBengkelDashboard() {
 
   const handleLogout = async () => {
     try {
-      await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || ""}/api/auth/logout`,
-        { method: "POST", credentials: "same-origin" },
-      );
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "same-origin",
+      });
     } catch {
       // ignore
     }

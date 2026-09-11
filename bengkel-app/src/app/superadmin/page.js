@@ -76,7 +76,28 @@ export default function SuperadminDashboard() {
   useEffect(() => {
     const session = localStorage.getItem("user");
     if (!session) {
-      router.push("/login");
+      // localStorage kosong — coba fetch profile dari API pakai JWT cookie
+      fetchWithAuth("/api/profile")
+        .then((data) => {
+          if (data?.success && data.data) {
+            const profile = data.data;
+            if (profile.role === "superadmin") {
+              localStorage.setItem("user", JSON.stringify(profile));
+              setUser(profile);
+              fetchBengkels();
+              fetchCustomers();
+              fetchVehicles();
+              fetchAdminBengkels();
+              fetchBookings();
+              fetchMitraRequests();
+            } else {
+              router.push("/login");
+            }
+          }
+        })
+        .catch(() => {
+          // fetchWithAuth handle redirect ke /login jika 401
+        });
       return;
     }
     const parsedUser = JSON.parse(session);
@@ -96,10 +117,10 @@ export default function SuperadminDashboard() {
 
   const handleLogout = async () => {
     try {
-      await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || ""}/api/auth/logout`,
-        { method: "POST", credentials: "same-origin" },
-      );
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "same-origin",
+      });
     } catch {
       // ignore
     }

@@ -32,10 +32,10 @@ export async function fetchWithAuth(endpoint, options = {}) {
   if (response.status === 401 || response.status === 403) {
     // Token expired — bersihkan cookie via backend lalu redirect
     try {
-      await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || ""}/api/auth/logout`,
-        { method: "POST", credentials: "same-origin" },
-      );
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "same-origin",
+      });
     } catch {
       //-ignore — cookie mungkin sudah expired
     }
