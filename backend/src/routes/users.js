@@ -5,6 +5,17 @@ const userController = require("../controllers/userController");
 const { verifyToken } = require("../middlewares/auth");
 
 // ==========================================
+// ROUTES UNTUK PROFILE USER YANG SEDANG LOGIN
+// (harus didaftarkan sebelum "/:id" agar tidak bentrok, walau beda method)
+// ==========================================
+
+// GET /api/users/profile -> Ambil data profile user yang sedang login
+router.get("/profile", verifyToken, userController.getProfile);
+
+// PUT /api/users/profile -> Update profile user yang sedang login
+router.put("/profile", verifyToken, userController.updateProfile);
+
+// ==========================================
 // ROUTES UNTUK MANAJEMEN PELANGGAN (DILINDUNGI JWT)
 // ==========================================
 
