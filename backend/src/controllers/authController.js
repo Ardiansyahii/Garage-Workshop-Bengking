@@ -9,6 +9,7 @@ const {
 const { SECRET_KEY } = require("../middlewares/auth.js");
 
 const otpStore = new Map();
+const passwordResetStore = new Map();
 const OTP_TTL_MS = 5 * 60 * 1000;
 
 const generateOtp = () => String(Math.floor(1000 + Math.random() * 9000));
@@ -135,7 +136,112 @@ exports.verifyOtp = async (req, res, next) => {
 };
 
 // ==========================================
-// 2. FUNGSI LOGIN
+// 2. FUNGSI LUPA PASSWORD
+// ==========================================
+exports.requestPasswordResetOtp = async (req, res, next) => {
+  try {
+    const normalizedWhatsapp = getNormalizedWhatsapp(req.body.whatsapp);
+
+    if (!normalizedWhatsapp) {
+      return res.status(400).json({
+        success: false,
+        message: "Nomor WhatsApp wajib diisi dengan benar.",
+      });
+    }
+
+    const [users] = await db.query(
+      "SELECT id FROM users WHERE whatsapp = ? OR whatsapp = ?",
+      [req.body.whatsapp, normalizedWhatsapp],
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Nomor WhatsApp tidak terdaftar.",
+      });
+    }
+
+    const otp = generateOtp();
+    passwordResetStore.set(normalizedWhatsapp, {
+      otp,
+      expiresAt: Date.now() + OTP_TTL_MS,
+    });
+
+    const sendResult = await sendWhatsAppNotification(
+      normalizedWhatsapp,
+      `Kode OTP untuk reset password Apex Garage adalah *${otp}*.\n\nKode ini berlaku selama 5 menit.`,
+    );
+
+    if (!sendResult?.success) {
+      passwordResetStore.delete(normalizedWhatsapp);
+      return res.status(500).json({
+        success: false,
+        message: "Gagal mengirim OTP ke WhatsApp. Silakan coba lagi.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Kode OTP reset password berhasil dikirim ke WhatsApp Anda.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.resetPassword = async (req, res, next) => {
+  try {
+    const normalizedWhatsapp = getNormalizedWhatsapp(req.body.whatsapp);
+    const { otp, password } = req.body;
+    const pendingReset = passwordResetStore.get(normalizedWhatsapp);
+
+    if (!normalizedWhatsapp || !otp || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "WhatsApp, OTP, dan password baru wajib diisi.",
+      });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "Password baru minimal 8 karakter.",
+      });
+    }
+
+    if (!pendingReset || Date.now() > pendingReset.expiresAt) {
+      passwordResetStore.delete(normalizedWhatsapp);
+      return res.status(400).json({
+        success: false,
+        message: "Kode OTP sudah kedaluwarsa. Silakan minta kode baru.",
+      });
+    }
+
+    if (String(pendingReset.otp) !== String(otp).trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Kode OTP yang Anda masukkan salah.",
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, await bcrypt.genSalt(10));
+    await db.query(
+      "UPDATE users SET password = ? WHERE whatsapp = ? OR whatsapp = ?",
+      [hashedPassword, req.body.whatsapp, normalizedWhatsapp],
+    );
+
+    passwordResetStore.delete(normalizedWhatsapp);
+    return res.status(200).json({
+      success: true,
+      message: "Password berhasil diubah. Silakan login kembali.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ==========================================
+// 3. FUNGSI LOGIN
 // ==========================================
 exports.login = async (req, res, next) => {
   try {

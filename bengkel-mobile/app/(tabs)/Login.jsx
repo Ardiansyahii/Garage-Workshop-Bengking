@@ -39,11 +39,13 @@ const API_URL = Platform.select({
 // Yang sudah ada: home ("/"), login ("/Login"), register ("/Register")
 // Yang BELUM ada file-nya (route masih perkiraan, buat dulu filenya):
 //   - registerMitra, dashboard, superAdminDashboard, adminDashboard
+//   - forgotPassword ("/ForgotPassword") -> lihat ForgotPasswordScreen.tsx
 // ====================================================================
 const ROUTES = {
   home: "/",
   register: "/Register",
   registerMitra: "/register-mitra",
+  forgotPassword: "/ForgotPassword",
   superAdminDashboard: "/dashboard/superadmin",
   adminDashboard: "/dashboard/admin",
   dashboard: "/dashboard",
@@ -200,6 +202,15 @@ export default function LoginScreen() {
               />
             </View>
           </View>
+
+          {/* LUPA KATA SANDI */}
+          <TouchableOpacity
+            style={styles.forgotPasswordLink}
+            onPress={() => router.push(ROUTES.forgotPassword)}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Text style={styles.forgotPasswordText}>Lupa kata sandi?</Text>
+          </TouchableOpacity>
 
           {/* BUTTON SUBMIT */}
           <TouchableOpacity
@@ -385,6 +396,16 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 13,
     paddingVertical: 12,
+  },
+  forgotPasswordLink: {
+    alignSelf: "flex-end",
+    marginTop: -8,
+    marginBottom: 18,
+  },
+  forgotPasswordText: {
+    color: "#ef4444",
+    fontSize: 12,
+    fontWeight: "700",
   },
   submitBtn: {
     backgroundColor: "#dc2626",

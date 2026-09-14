@@ -28,6 +28,7 @@ import {
   Eye,
   EyeOff,
   Check,
+  ShieldCheck,
 } from 'lucide-react-native';
 
 // =====================================================================
@@ -45,6 +46,8 @@ const STORAGE_KEYS = {
   USER: 'user',
   USER_SESSION: 'user_session',
 };
+
+const OTP_LENGTH = 4;
 
 // =====================================================================
 // TYPES — mengikuti payload backend
@@ -68,6 +71,11 @@ interface ToastState {
   type: ToastType;
 }
 
+interface PendingChanges {
+  name: boolean;
+  password: boolean;
+}
+
 // =====================================================================
 // MAIN COMPONENT
 // =====================================================================
@@ -75,14 +83,27 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const router = useRouter();
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Modal edit profile (username / password)
   const [modalVisible, setModalVisible] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Modal verifikasi OTP (terpisah dari modal edit)
+  const [otpModalVisible, setOtpModalVisible] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [resending, setResending] = useState(false);
+
+  // Menyimpan apa saja yang sedang diubah (username / password / keduanya)
+  // supaya bisa ditampilkan sebagai keterangan di modal OTP.
+  const [pendingChanges, setPendingChanges] = useState<PendingChanges>({
+    name: false,
+    password: false,
+  });
 
   const [formName, setFormName] = useState('');
   const [formPassword, setFormPassword] = useState('');
   const [formConfirmPassword, setFormConfirmPassword] = useState('');
   const [formOtp, setFormOtp] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -134,13 +155,15 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     ]).start(() => setToast((t) => ({ ...t, visible: false })));
   };
 
+  // ---------------------------------------------------------------
+  // Modal Edit Profile
+  // ---------------------------------------------------------------
   const openEditModal = () => {
     if (!user) return;
     setFormName(user.name || '');
     setFormPassword('');
     setFormConfirmPassword('');
     setFormOtp('');
-    setOtpSent(false);
     setFormErrors({});
     setModalVisible(true);
   };
@@ -164,36 +187,85 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSave = async () => {
+  // Kirim request OTP ke backend (dipakai saat submit form edit & saat resend)
+  const requestOtp = async (): Promise<boolean> => {
+    const token =
+      (await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)) ||
+      (await AsyncStorage.getItem(STORAGE_KEYS.TOKEN));
+
+    const otpRes = await fetch(`${API_BASE_URL}/users/profile/request-update-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        name: formName.trim() !== user?.name ? formName.trim() : undefined,
+        password: formPassword || undefined,
+      }),
+    });
+    const otpData = await otpRes.json();
+    if (!otpRes.ok || !otpData?.success) {
+      throw new Error(otpData?.message || 'Gagal mengirim OTP');
+    }
+    return true;
+  };
+
+  // Submit form edit -> minta OTP -> tutup modal edit, buka modal OTP
+  const handleSubmitEdit = async () => {
     if (!validateForm() || !user) return;
     try {
       setSaving(true);
+
+      // Catat perubahan apa saja yang sedang diajukan, dipakai untuk
+      // menampilkan keterangan di modal OTP.
+      const changingName = formName.trim() !== user.name;
+      const changingPassword = !!formPassword;
+      setPendingChanges({ name: changingName, password: changingPassword });
+
+      await requestOtp();
+      setFormOtp('');
+      setFormErrors({});
+      setModalVisible(false);
+      setOtpModalVisible(true);
+      showToast('OTP sudah dikirim ke WhatsApp Anda', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Terjadi kesalahan, silakan coba lagi', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ---------------------------------------------------------------
+  // Modal Verifikasi OTP
+  // ---------------------------------------------------------------
+  const closeOtpModal = () => {
+    if (verifying || resending) return;
+    setOtpModalVisible(false);
+    setFormOtp('');
+    setFormErrors({});
+  };
+
+  const handleResendOtp = async () => {
+    try {
+      setResending(true);
+      await requestOtp();
+      setFormOtp('');
+      showToast('OTP baru sudah dikirim', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Gagal mengirim ulang OTP', 'error');
+    } finally {
+      setResending(false);
+    }
+  };
+
+  const handleVerifyOtp = useCallback(async () => {
+    if (!/^[0-9]{4}$/.test(formOtp.trim())) {
+      setFormErrors({ otp: 'OTP harus terdiri dari 4 angka' });
+      return;
+    }
+    try {
+      setVerifying(true);
       const token =
         (await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)) ||
         (await AsyncStorage.getItem(STORAGE_KEYS.TOKEN));
-
-      if (!otpSent) {
-        const otpRes = await fetch(`${API_BASE_URL}/users/profile/request-update-otp`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({
-            name: formName.trim() !== user.name ? formName.trim() : undefined,
-            password: formPassword || undefined,
-          }),
-        });
-        const otpData = await otpRes.json();
-        if (!otpRes.ok || !otpData?.success) {
-          throw new Error(otpData?.message || 'Gagal mengirim OTP');
-        }
-        setOtpSent(true);
-        showToast('OTP sudah dikirim ke WhatsApp Anda', 'success');
-        return;
-      }
-
-      if (!/^[0-9]{4}$/.test(formOtp.trim())) {
-        setFormErrors((errors) => ({ ...errors, otp: 'OTP harus terdiri dari 4 angka' }));
-        return;
-      }
 
       const res = await fetch(`${API_BASE_URL}/users/profile`, {
         method: 'PUT',
@@ -203,20 +275,33 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       const data = await res.json();
 
       if (!res.ok || !data?.success) {
-        throw new Error(data?.message || 'Gagal memperbarui profile');
+        throw new Error(data?.message || 'Kode OTP tidak valid');
       }
 
       const updatedUser: UserData = data.user;
       setUser(updatedUser);
       await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
-      setModalVisible(false);
+
+      setOtpModalVisible(false);
+      setFormOtp('');
+      setFormPassword('');
+      setFormConfirmPassword('');
       showToast('Profile berhasil diperbarui', 'success');
     } catch (err: any) {
+      setFormErrors({ otp: err.message || 'Kode OTP tidak valid' });
       showToast(err.message || 'Terjadi kesalahan, silakan coba lagi', 'error');
     } finally {
-      setSaving(false);
+      setVerifying(false);
     }
-  };
+  }, [formOtp]);
+
+  // Auto-verify begitu 4 digit sudah terisi semua
+  useEffect(() => {
+    if (otpModalVisible && formOtp.length === OTP_LENGTH && !verifying && !resending) {
+      handleVerifyOtp();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formOtp, otpModalVisible]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -249,6 +334,15 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       </View>
     );
   }
+
+  const pendingLabel =
+    pendingChanges.name && pendingChanges.password
+      ? 'Username & Password'
+      : pendingChanges.name
+      ? 'Username'
+      : pendingChanges.password
+      ? 'Password'
+      : null;
 
   return (
     <View style={styles.container}>
@@ -324,7 +418,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* ============ EDIT PROFILE MODAL ============ */}
+      {/* ============ MODAL 1: EDIT PROFILE ============ */}
       <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={closeEditModal}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
           <View style={styles.modalCard}>
@@ -382,17 +476,6 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                   }
                 />
               ) : null}
-              {otpSent ? (
-                <FormField
-                  label="Kode OTP WhatsApp"
-                  icon={<Lock color={COLORS.textMuted} size={16} />}
-                  value={formOtp}
-                  onChangeText={setFormOtp}
-                  placeholder="Masukkan 4 digit OTP"
-                  keyboardType="number-pad"
-                  error={formErrors.otp}
-                />
-              ) : null}
             </ScrollView>
 
             <View style={styles.modalActions}>
@@ -406,7 +489,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.saveButton]}
-                onPress={handleSave}
+                onPress={handleSubmitEdit}
                 disabled={saving}
                 activeOpacity={0.8}
               >
@@ -415,7 +498,73 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                 ) : (
                   <>
                     <Check color={COLORS.white} size={16} />
-                    <Text style={styles.saveButtonText}>Simpan Perubahan</Text>
+                    <Text style={styles.saveButtonText}>Kirim OTP</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ============ MODAL 2: VERIFIKASI OTP (terpisah, kotak per digit) ============ */}
+      <Modal visible={otpModalVisible} transparent animationType="fade" onRequestClose={closeOtpModal}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <ShieldCheck color={COLORS.red} size={18} />
+                <Text style={styles.modalTitle}>Verifikasi OTP</Text>
+              </View>
+              <TouchableOpacity onPress={closeOtpModal} disabled={verifying || resending} hitSlop={10}>
+                <X color={COLORS.white} size={20} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Keterangan perubahan yang sedang diproses */}
+            {pendingLabel ? (
+              <View style={styles.pendingBadge}>
+                <Edit3 color={COLORS.red} size={13} />
+                <Text style={styles.pendingBadgeText}>Sedang mengganti {pendingLabel}</Text>
+              </View>
+            ) : null}
+
+            <Text style={styles.otpHelperText}>
+              Masukkan 4 digit kode OTP yang sudah dikirim ke WhatsApp {user?.whatsapp || 'Anda'}.
+            </Text>
+
+            <OtpBoxInput value={formOtp} onChange={setFormOtp} error={!!formErrors.otp} disabled={verifying} />
+            {formErrors.otp ? <Text style={[styles.errorText, { textAlign: 'center' }]}>{formErrors.otp}</Text> : null}
+
+            <TouchableOpacity onPress={handleResendOtp} disabled={resending || verifying} style={styles.resendRow}>
+              {resending ? (
+                <ActivityIndicator size="small" color={COLORS.red} />
+              ) : (
+                <Text style={styles.resendText}>Tidak menerima kode? Kirim Ulang</Text>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={closeOtpModal}
+                disabled={verifying || resending}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.cancelButtonText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.saveButton]}
+                onPress={handleVerifyOtp}
+                disabled={verifying || resending}
+                activeOpacity={0.8}
+              >
+                {verifying ? (
+                  <ActivityIndicator size="small" color={COLORS.white} />
+                ) : (
+                  <>
+                    <Check color={COLORS.white} size={16} />
+                    <Text style={styles.saveButtonText}>Verifikasi</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -515,6 +664,78 @@ const FormField: React.FC<FormFieldProps> = ({
     {error ? <Text style={styles.errorText}>{error}</Text> : null}
   </View>
 );
+
+// Kotak OTP terpisah per digit (4 kotak), dengan auto-focus & backspace ke kotak sebelumnya.
+interface OtpBoxInputProps {
+  value: string;
+  onChange: (v: string) => void;
+  error?: boolean;
+  disabled?: boolean;
+}
+
+const OtpBoxInput: React.FC<OtpBoxInputProps> = ({ value, onChange, error, disabled }) => {
+  const inputRefs = useRef<Array<TextInput | null>>([]);
+  const digits = Array.from({ length: OTP_LENGTH }, (_, i) => value[i] || '');
+
+  const handleChangeDigit = (text: string, index: number) => {
+    const clean = text.replace(/[^0-9]/g, '');
+
+    if (!clean) {
+      const next = digits.slice();
+      next[index] = '';
+      onChange(next.join(''));
+      return;
+    }
+
+    // Kalau user paste beberapa digit sekaligus ke satu kotak
+    if (clean.length > 1) {
+      const pasted = clean.slice(0, OTP_LENGTH).split('');
+      const next = digits.slice();
+      pasted.forEach((d, i) => {
+        if (index + i < OTP_LENGTH) next[index + i] = d;
+      });
+      onChange(next.join(''));
+      const lastFilled = Math.min(index + pasted.length, OTP_LENGTH - 1);
+      inputRefs.current[lastFilled]?.focus();
+      return;
+    }
+
+    const next = digits.slice();
+    next[index] = clean;
+    onChange(next.join(''));
+    if (index < OTP_LENGTH - 1) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleKeyPress = (e: any, index: number) => {
+    if (e.nativeEvent.key === 'Backspace' && !digits[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  return (
+    <View style={styles.otpBoxRow}>
+      {digits.map((digit, i) => (
+        <TextInput
+          key={i}
+          ref={(ref) => {
+            inputRefs.current[i] = ref;
+          }}
+          style={[styles.otpBox, error ? styles.otpBoxError : null, digit ? styles.otpBoxFilled : null]}
+          value={digit}
+          onChangeText={(t) => handleChangeDigit(t, i)}
+          onKeyPress={(e) => handleKeyPress(e, i)}
+          keyboardType="number-pad"
+          maxLength={i === 0 ? OTP_LENGTH : 1}
+          editable={!disabled}
+          selectTextOnFocus
+          textAlign="center"
+        />
+      ))}
+    </View>
+  );
+};
 
 // =====================================================================
 // THEME — black background, improved glowing red accent
@@ -667,6 +888,48 @@ const styles = StyleSheet.create({
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
   modalTitle: { fontSize: 17, fontWeight: '700', color: COLORS.white },
 
+  // Badge keterangan "sedang mengganti username/password"
+  pendingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: COLORS.redSoft,
+    borderWidth: 1,
+    borderColor: 'rgba(255,59,78,0.3)',
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+  },
+  pendingBadgeText: { color: COLORS.red, fontSize: 12.5, fontWeight: '700' },
+
+  otpHelperText: { fontSize: 13, color: COLORS.textMuted, marginBottom: 18, lineHeight: 18 },
+
+  // Kotak-kotak OTP
+  otpBoxRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 6,
+  },
+  otpBox: {
+    width: 54,
+    height: 58,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.card,
+    color: COLORS.white,
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  otpBoxFilled: { borderColor: COLORS.red },
+  otpBoxError: { borderColor: COLORS.red, backgroundColor: '#2A0E12' },
+
+  resendRow: { alignItems: 'center', marginTop: 14, marginBottom: 4, paddingVertical: 6 },
+  resendText: { color: COLORS.red, fontSize: 13, fontWeight: '600' },
+
   fieldWrapper: { marginBottom: 14 },
   fieldLabel: { fontSize: 12.5, fontWeight: '600', color: COLORS.textMuted, marginBottom: 6 },
   inputWrapper: {
@@ -683,7 +946,7 @@ const styles = StyleSheet.create({
   input: { flex: 1, paddingVertical: 11, fontSize: 14, color: COLORS.white },
   errorText: { color: COLORS.red, fontSize: 11.5, marginTop: 4 },
 
-  modalActions: { flexDirection: 'row', gap: 10, marginTop: 8 },
+  modalActions: { flexDirection: 'row', gap: 10, marginTop: 16 },
   modalButton: {
     flex: 1,
     flexDirection: 'row',
