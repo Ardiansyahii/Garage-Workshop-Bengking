@@ -12,6 +12,12 @@ const { verifyToken } = require("../middlewares/auth");
 // GET /api/users/profile -> Ambil data profile user yang sedang login
 router.get("/profile", verifyToken, userController.getProfile);
 
+router.post(
+	"/profile/request-update-otp",
+	verifyToken,
+	userController.requestProfileUpdateOtp,
+);
+
 // PUT /api/users/profile -> Update profile user yang sedang login
 router.put("/profile", verifyToken, userController.updateProfile);
 

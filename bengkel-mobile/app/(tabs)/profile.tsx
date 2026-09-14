@@ -14,12 +14,12 @@ import {
   Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import {
   ChevronLeft,
   ChevronRight,
   Bell,
   User as UserIcon,
-  Mail,
   Phone,
   Lock,
   Edit3,
@@ -33,13 +33,17 @@ import {
 // =====================================================================
 // CONFIG — sesuaikan dengan environment backend Apex Garage kamu
 // =====================================================================
-const API_BASE_URL = 'http://10.0.2.2:5000/api'; // Android emulator -> localhost backend
-// iOS simulator: 'http://localhost:5000/api'
-// Device fisik / production: ganti dengan domain backend kamu
+const API_BASE_URL = Platform.select({
+  web: 'http://localhost:5000/api',
+  android: 'http://10.12.5.158:5000/api',
+  default: 'http://10.12.5.158:5000/api',
+});
 
 const STORAGE_KEYS = {
   TOKEN: 'token',
+  AUTH_TOKEN: 'auth_token',
   USER: 'user',
+  USER_SESSION: 'user_session',
 };
 
 // =====================================================================
@@ -49,7 +53,6 @@ interface UserData {
   id: number;
   name: string;
   whatsapp: string;
-  email?: string | null;
   role: string;
   bengkel_id: number | null;
 }
@@ -69,16 +72,17 @@ interface ToastState {
 // MAIN COMPONENT
 // =====================================================================
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
+  const router = useRouter();
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [formName, setFormName] = useState('');
-  const [formEmail, setFormEmail] = useState('');
-  const [formWhatsapp, setFormWhatsapp] = useState('');
   const [formPassword, setFormPassword] = useState('');
   const [formConfirmPassword, setFormConfirmPassword] = useState('');
+  const [formOtp, setFormOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -94,7 +98,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     try {
       setLoading(true);
       const storedUser = await AsyncStorage.getItem(STORAGE_KEYS.USER);
-      const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+      const token =
+        (await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)) ||
+        (await AsyncStorage.getItem(STORAGE_KEYS.TOKEN));
 
       if (storedUser) setUser(JSON.parse(storedUser));
 
@@ -131,10 +137,10 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const openEditModal = () => {
     if (!user) return;
     setFormName(user.name || '');
-    setFormEmail(user.email || '');
-    setFormWhatsapp(user.whatsapp || '');
     setFormPassword('');
     setFormConfirmPassword('');
+    setFormOtp('');
+    setOtpSent(false);
     setFormErrors({});
     setModalVisible(true);
   };
@@ -146,12 +152,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
-    if (!formName.trim()) errors.name = 'Nama wajib diisi';
-    if (!formWhatsapp.trim() || !/^[0-9+]{9,15}$/.test(formWhatsapp.trim())) {
-      errors.whatsapp = 'Nomor WhatsApp tidak valid';
-    }
-    if (formEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formEmail.trim())) {
-      errors.email = 'Format email tidak valid';
+    if (!formName.trim()) errors.name = 'Username wajib diisi';
+    if (formName.trim() === user?.name && !formPassword) {
+      errors.name = 'Masukkan username atau password baru';
     }
     if (formPassword) {
       if (formPassword.length < 8) errors.password = 'Password minimal 8 karakter';
@@ -161,24 +164,41 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     return Object.keys(errors).length === 0;
   };
 
-  // Password di-hash di BACKEND (bcrypt), frontend hanya kirim plaintext lewat HTTPS.
   const handleSave = async () => {
     if (!validateForm() || !user) return;
     try {
       setSaving(true);
-      const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+      const token =
+        (await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)) ||
+        (await AsyncStorage.getItem(STORAGE_KEYS.TOKEN));
 
-      const payload: Record<string, string> = {
-        name: formName.trim(),
-        whatsapp: formWhatsapp.trim(),
-      };
-      if (formEmail.trim()) payload.email = formEmail.trim();
-      if (formPassword) payload.password = formPassword;
+      if (!otpSent) {
+        const otpRes = await fetch(`${API_BASE_URL}/users/profile/request-update-otp`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            name: formName.trim() !== user.name ? formName.trim() : undefined,
+            password: formPassword || undefined,
+          }),
+        });
+        const otpData = await otpRes.json();
+        if (!otpRes.ok || !otpData?.success) {
+          throw new Error(otpData?.message || 'Gagal mengirim OTP');
+        }
+        setOtpSent(true);
+        showToast('OTP sudah dikirim ke WhatsApp Anda', 'success');
+        return;
+      }
+
+      if (!/^[0-9]{4}$/.test(formOtp.trim())) {
+        setFormErrors((errors) => ({ ...errors, otp: 'OTP harus terdiri dari 4 angka' }));
+        return;
+      }
 
       const res = await fetch(`${API_BASE_URL}/users/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ otp: formOtp.trim() }),
       });
       const data = await res.json();
 
@@ -208,12 +228,13 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           text: 'Keluar',
           style: 'destructive',
           onPress: async () => {
-            await AsyncStorage.multiRemove([STORAGE_KEYS.TOKEN, STORAGE_KEYS.USER]);
-            if (navigation?.reset) {
-              navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-            } else if (navigation?.navigate) {
-              navigation.navigate('Login');
-            }
+            await AsyncStorage.multiRemove([
+              STORAGE_KEYS.TOKEN,
+              STORAGE_KEYS.AUTH_TOKEN,
+              STORAGE_KEYS.USER,
+              STORAGE_KEYS.USER_SESSION,
+            ]);
+            router.replace('/');
           },
         },
       ],
@@ -269,8 +290,6 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         </View>
 
         <View style={styles.infoCard}>
-          <InfoRow icon={<Mail color={COLORS.red} size={16} />} label="Email" value={user?.email || 'Belum diatur'} />
-          <View style={styles.divider} />
           <InfoRow icon={<Phone color={COLORS.red} size={16} />} label="WhatsApp" value={user?.whatsapp || '-'} />
           <View style={styles.divider} />
           <InfoRow icon={<Lock color={COLORS.red} size={16} />} label="Password" value="••••••••" isLast />
@@ -318,31 +337,12 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
             <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
               <FormField
-                label="Nama"
+                label="Username"
                 icon={<UserIcon color={COLORS.textMuted} size={16} />}
                 value={formName}
                 onChangeText={setFormName}
                 placeholder="Nama lengkap"
                 error={formErrors.name}
-              />
-              <FormField
-                label="Email"
-                icon={<Mail color={COLORS.textMuted} size={16} />}
-                value={formEmail}
-                onChangeText={setFormEmail}
-                placeholder="contoh@email.com"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                error={formErrors.email}
-              />
-              <FormField
-                label="Nomor WhatsApp"
-                icon={<Phone color={COLORS.textMuted} size={16} />}
-                value={formWhatsapp}
-                onChangeText={setFormWhatsapp}
-                placeholder="08xxxxxxxxxx"
-                keyboardType="phone-pad"
-                error={formErrors.whatsapp}
               />
               <FormField
                 label="Password Baru (opsional)"
@@ -380,6 +380,17 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                       )}
                     </TouchableOpacity>
                   }
+                />
+              ) : null}
+              {otpSent ? (
+                <FormField
+                  label="Kode OTP WhatsApp"
+                  icon={<Lock color={COLORS.textMuted} size={16} />}
+                  value={formOtp}
+                  onChangeText={setFormOtp}
+                  placeholder="Masukkan 4 digit OTP"
+                  keyboardType="number-pad"
+                  error={formErrors.otp}
                 />
               ) : null}
             </ScrollView>

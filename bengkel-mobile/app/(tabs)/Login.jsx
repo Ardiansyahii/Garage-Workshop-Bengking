@@ -30,8 +30,8 @@ const { width } = Dimensions.get("window");
 // Samakan dengan API_URL di RegisterScreen/VerifyScreen kamu
 const API_URL = Platform.select({
   web:"http://localhost:5000",
-  android:"http://10.51.2.60:5000", // khusus Emulator Android
-  default:"http://10.240.180.60:5000", // Ganti dengan IP Wi-Fi laptop kamu jika pakai HP Fisik (Expo Go)
+  android:"http://10.12.5.158:5000", // IP Wi-Fi laptop untuk Expo Go/perangkat Android
+  default:"http://10.12.5.158:5000",
 });
 
 // ====================================================================

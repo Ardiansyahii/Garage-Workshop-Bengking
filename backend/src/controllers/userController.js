@@ -1,6 +1,13 @@
 const bcrypt = require("bcryptjs");
 const db = require("../config/db");
-const { normalizeWhatsAppNumber } = require("../utils/fonnte");
+const {
+  normalizeWhatsAppNumber,
+  sendWhatsAppNotification,
+} = require("../utils/fonnte");
+
+const profileOtpStore = new Map();
+const PROFILE_OTP_TTL_MS = 5 * 60 * 1000;
+const generateOtp = () => String(Math.floor(1000 + Math.random() * 9000));
 
 // ==========================================
 // 1. GET: Ambil Semua Data Pelanggan
@@ -88,39 +95,15 @@ exports.deleteUser = async (req, res, next) => {
 };
 
 // ==========================================
-// 4. Helper: cek apakah kolom `email` ada di tabel users
-// (agar tidak error jika database belum punya kolom email)
-// ==========================================
-let emailColumnCache = null;
-const hasEmailColumn = async () => {
-  if (emailColumnCache !== null) return emailColumnCache;
-  try {
-    const [rows] = await db.query(
-      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
-       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'email'`,
-    );
-    emailColumnCache = rows.length > 0;
-  } catch (err) {
-    emailColumnCache = false;
-  }
-  return emailColumnCache;
-};
-
-// ==========================================
-// 5. GET /api/users/profile
+// 4. GET /api/users/profile
 // Ambil data user yang SEDANG LOGIN (dari req.user.id hasil verifyToken)
 // ==========================================
 exports.getProfile = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const emailExists = await hasEmailColumn();
-
-    const columns = emailExists
-      ? "id, name, whatsapp, email, role, bengkel_id"
-      : "id, name, whatsapp, role, bengkel_id";
 
     const [users] = await db.query(
-      `SELECT ${columns} FROM users WHERE id = ?`,
+      "SELECT id, name, whatsapp, role, bengkel_id FROM users WHERE id = ?",
       [userId],
     );
 
@@ -135,47 +118,20 @@ exports.getProfile = async (req, res, next) => {
 };
 
 // ==========================================
-// 6. PUT /api/users/profile
-// Update profile milik sendiri saja (name, whatsapp, email opsional, password opsional).
-// Password baru di-hash dengan bcrypt sebelum disimpan.
+// 5. POST /api/users/profile/request-update-otp
 // ==========================================
-exports.updateProfile = async (req, res, next) => {
+exports.requestProfileUpdateOtp = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { name, whatsapp, email, password } = req.body;
+    const { name, password } = req.body;
 
-    // ---- Validasi nama ----
-    if (!name || !name.trim()) {
-      return res.status(400).json({ success: false, message: "Nama wajib diisi" });
-    }
-
-    // ---- Validasi & normalisasi whatsapp ----
-    const normalizedWhatsapp = normalizeWhatsAppNumber(whatsapp);
-    if (!normalizedWhatsapp) {
-      return res.status(400).json({ success: false, message: "Nomor WhatsApp tidak valid" });
-    }
-
-    const [existing] = await db.query(
-      "SELECT id FROM users WHERE whatsapp = ? AND id != ?",
-      [normalizedWhatsapp, userId],
-    );
-    if (existing.length > 0) {
+    if ((!name || !name.trim()) && !password) {
       return res.status(400).json({
         success: false,
-        message: "Nomor WhatsApp sudah digunakan oleh user lain",
+        message: "Username atau password baru wajib diisi",
       });
     }
 
-    // ---- Validasi email (opsional, hanya jika kolom tersedia di DB) ----
-    const emailExists = await hasEmailColumn();
-    if (email && emailExists) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        return res.status(400).json({ success: false, message: "Format email tidak valid" });
-      }
-    }
-
-    // ---- Validasi password baru (opsional) ----
     if (password && password.length < 8) {
       return res.status(400).json({
         success: false,
@@ -183,18 +139,86 @@ exports.updateProfile = async (req, res, next) => {
       });
     }
 
-    // ---- Bangun query UPDATE secara dinamis, hanya field yang diizinkan ----
-    const fields = ["name = ?", "whatsapp = ?"];
-    const values = [name.trim(), normalizedWhatsapp];
-
-    if (email && emailExists) {
-      fields.push("email = ?");
-      values.push(email.trim());
+    const [users] = await db.query(
+      "SELECT whatsapp FROM users WHERE id = ?",
+      [userId],
+    );
+    if (users.length === 0) {
+      return res.status(404).json({ success: false, message: "User tidak ditemukan" });
     }
 
-    if (password) {
+    const otp = generateOtp();
+    profileOtpStore.set(userId, {
+      name: name?.trim() || null,
+      password: password || null,
+      otp,
+      expiresAt: Date.now() + PROFILE_OTP_TTL_MS,
+    });
+
+    const sendResult = await sendWhatsAppNotification(
+      normalizeWhatsAppNumber(users[0].whatsapp),
+      `Kode OTP perubahan profil Apex Garage adalah *${otp}*.\n\nKode ini berlaku selama 5 menit.`,
+    );
+
+    if (!sendResult?.success) {
+      profileOtpStore.delete(userId);
+      return res.status(500).json({
+        success: false,
+        message: "Gagal mengirim OTP ke WhatsApp. Silakan coba lagi.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Kode OTP berhasil dikirim ke WhatsApp Anda.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ==========================================
+// 6. PUT /api/users/profile
+// Simpan username dan/atau password setelah OTP benar.
+// ==========================================
+exports.updateProfile = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { otp } = req.body;
+    const pendingUpdate = profileOtpStore.get(userId);
+
+    if (!pendingUpdate || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Kode OTP wajib diisi. Silakan minta kode OTP terlebih dahulu.",
+      });
+    }
+
+    if (Date.now() > pendingUpdate.expiresAt) {
+      profileOtpStore.delete(userId);
+      return res.status(400).json({
+        success: false,
+        message: "Kode OTP sudah kedaluwarsa. Silakan minta kode baru.",
+      });
+    }
+
+    if (String(pendingUpdate.otp) !== String(otp).trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Kode OTP yang Anda masukkan salah.",
+      });
+    }
+
+    const fields = [];
+    const values = [];
+    if (pendingUpdate.name) {
+      fields.push("name = ?");
+      values.push(pendingUpdate.name);
+    }
+
+    if (pendingUpdate.password) {
       const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(password, salt);
+      const hashedPassword = await bcrypt.hash(pendingUpdate.password, salt);
       fields.push("password = ?");
       values.push(hashedPassword);
     }
@@ -202,12 +226,10 @@ exports.updateProfile = async (req, res, next) => {
     values.push(userId);
 
     await db.query(`UPDATE users SET ${fields.join(", ")} WHERE id = ?`, values);
+    profileOtpStore.delete(userId);
 
-    const columns = emailExists
-      ? "id, name, whatsapp, email, role, bengkel_id"
-      : "id, name, whatsapp, role, bengkel_id";
     const [updatedUsers] = await db.query(
-      `SELECT ${columns} FROM users WHERE id = ?`,
+      "SELECT id, name, whatsapp, role, bengkel_id FROM users WHERE id = ?",
       [userId],
     );
 
