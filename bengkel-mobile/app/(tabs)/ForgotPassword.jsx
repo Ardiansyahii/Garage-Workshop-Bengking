@@ -31,7 +31,7 @@ import {
 const API_URL = Platform.select({
   web: "http://localhost:5000",
   android: "http://10.12.5.158:5000",
-  default: "http://10.12.5.158:5000",
+  default: "http://10.60.194.60:5000",
 });
 
 // ====================================================================
