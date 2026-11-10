@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   ImageBackground,
-  Alert,
   ActivityIndicator,
   StyleSheet,
   StatusBar,
@@ -16,6 +15,8 @@ import {
   Dimensions,
   BackHandler,
 } from "react-native";
+
+import Toast from "react-native-toast-message";
 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -34,10 +35,10 @@ import {
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 // Lebar ScrollView step form = lebar layar dikurangi padding kiri+kanan
-// phaseContainer (20+20). Ini HARUS sama dengan lebar aktual stepScroll
-// (marginHorizontal -22 pada stepScroll membatalkan padding formCard 22+22,
-// jadi lebarnya balik ke lebar phaseContainer, bukan SCREEN_WIDTH penuh).
+// phaseContainer (20+20). Harus sama dengan lebar aktual stepScroll.
 const FORM_PAGE_WIDTH = SCREEN_WIDTH - 40;
+
+const MIN_PASSWORD_LENGTH = 8; // samakan dengan backend (resetPassword minimal 8)
 
 // Configure URL API dynamically based on environment
 const API_URL = Platform.select({
@@ -50,6 +51,21 @@ const ROUTES = {
   home: "/",
   login: "/Login",
   verify: "/verify",
+};
+
+// ==========================================
+// HELPER TOAST
+// Semua notifikasi pakai Toast (Alert.alert sering tidak muncul di web)
+// ==========================================
+const showToast = (type, text1, text2, visibilityTime = 4000) => {
+  Toast.show({
+    type, // "success" | "error" | "info"
+    text1,
+    text2,
+    position: "top",
+    visibilityTime,
+    topOffset: Platform.OS === "ios" ? 60 : 40,
+  });
 };
 
 // ==========================================
@@ -106,6 +122,7 @@ export default function RegisterOnboardingScreen() {
   // ------- FORM STATE -------
   const [step, setStep] = useState(0);
   const stepScrollRef = useRef(null);
+  const whatsappInputRef = useRef(null);
   const [formData, setFormData] = useState({
     name: "",
     whatsapp: "",
@@ -185,11 +202,11 @@ export default function RegisterOnboardingScreen() {
 
   const validateStep = (index) => {
     if (index === 0 && !formData.name.trim()) {
-      Alert.alert("Data Belum Lengkap", "Mohon isi nama lengkap kamu terlebih dahulu.");
+      showToast("error", "Data Belum Lengkap", "Mohon isi nama lengkap kamu terlebih dahulu.");
       return false;
     }
     if (index === 1 && !formData.whatsapp.trim()) {
-      Alert.alert("Data Belum Lengkap", "Mohon isi nomor WhatsApp aktif kamu.");
+      showToast("error", "Data Belum Lengkap", "Mohon isi nomor WhatsApp aktif kamu.");
       return false;
     }
     return true;
@@ -211,13 +228,12 @@ export default function RegisterOnboardingScreen() {
   };
 
   // ==========================================
-  // TOMBOL BACK UNIVERSAL (dipakai oleh panah di layar
-  // maupun tombol back hardware Android)
+  // TOMBOL BACK UNIVERSAL (panah di layar + hardware back Android)
   // ==========================================
   const handleBackPress = () => {
     if (phase === "register") {
       handleBackStep();
-      return true; // sudah ditangani, jangan keluar app / pop route
+      return true;
     }
 
     // phase === "onboarding"
@@ -231,9 +247,7 @@ export default function RegisterOnboardingScreen() {
     return true;
   };
 
-  // Dengarkan tombol back fisik/gesture Android.
-  // Registrasi ulang setiap phase/slideIndex/step berubah agar
-  // closure selalu memakai state terbaru (hindari stale closure).
+  // Registrasi ulang setiap state berubah agar tidak stale closure.
   useEffect(() => {
     if (Platform.OS !== "android") return;
 
@@ -245,13 +259,20 @@ export default function RegisterOnboardingScreen() {
     return () => subscription.remove();
   }, [phase, slideIndex, step]);
 
+  // ==========================================
+  // REGISTER
+  // ==========================================
   const handleRegister = async () => {
-    if (!formData.name || !formData.whatsapp || !formData.password) {
-      Alert.alert("Data Belum Lengkap", "Mohon isi semua kolom terlebih dahulu.");
+    if (!formData.name.trim() || !formData.whatsapp.trim() || !formData.password) {
+      showToast("error", "Data Belum Lengkap", "Mohon isi semua kolom terlebih dahulu.");
       return;
     }
-    if (formData.password.length < 6) {
-      Alert.alert("Password Terlalu Pendek", "Password minimal 6 karakter.");
+    if (formData.password.length < MIN_PASSWORD_LENGTH) {
+      showToast(
+        "error",
+        "Password Terlalu Pendek",
+        `Password minimal ${MIN_PASSWORD_LENGTH} karakter.`
+      );
       return;
     }
 
@@ -262,9 +283,8 @@ export default function RegisterOnboardingScreen() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: formData.name,
-          phone: formData.whatsapp,
-          whatsapp: formData.whatsapp,
+          name: formData.name.trim(),
+          whatsapp: formData.whatsapp.trim(),
           password: formData.password,
         }),
       });
@@ -272,21 +292,35 @@ export default function RegisterOnboardingScreen() {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        Alert.alert(
+        showToast(
+          "success",
           "Registrasi Berhasil!",
           data.message || "Kode OTP verifikasi telah dikirim ke nomor WhatsApp kamu."
         );
 
+        // Pakai nomor ter-normalisasi dari backend (62812...) agar cocok saat verifikasi OTP
         router.push({
           pathname: ROUTES.verify,
-          params: { whatsapp: formData.whatsapp },
+          params: { whatsapp: data.whatsapp || formData.whatsapp.trim() },
         });
+      } else if (res.status === 409 || data.code === "WHATSAPP_ALREADY_REGISTERED") {
+        // Nomor sudah terpakai -> toast + kembalikan user ke step WhatsApp
+        showToast(
+          "error",
+          "Nomor Sudah Terdaftar",
+          "Nomor HP ini sudah terdaftar. Silakan gunakan nomor lain atau masuk ke akun Anda.",
+          5000
+        );
+        goToStep(1);
+        // Fokuskan input WhatsApp setelah animasi pindah step selesai
+        setTimeout(() => whatsappInputRef.current?.focus(), 350);
       } else {
-        Alert.alert("Gagal Mendaftar", data.message || "Terjadi kesalahan pada sistem.");
+        showToast("error", "Gagal Mendaftar", data.message || "Terjadi kesalahan pada sistem.");
       }
     } catch (error) {
       console.error("Register Error:", error);
-      Alert.alert(
+      showToast(
+        "error",
         "Kesalahan Jaringan",
         "Gagal terhubung ke server. Pastikan backend berjalan di port 5000."
       );
@@ -300,14 +334,12 @@ export default function RegisterOnboardingScreen() {
   // ==========================================
   const renderOnboarding = () => (
     <View style={styles.phaseContainer}>
-      {/* TOMBOL LEWATI (tombol back sudah ada sebagai floating arrow) */}
       <View style={styles.onboardingTopBar}>
         <TouchableOpacity style={styles.skipBtn} onPress={handleSkipOnboarding}>
           <Text style={styles.skipBtnText}>Lewati</Text>
         </TouchableOpacity>
       </View>
 
-      {/* LOGO */}
       <Animated.View
         style={[
           styles.logoRow,
@@ -322,7 +354,6 @@ export default function RegisterOnboardingScreen() {
         </Text>
       </Animated.View>
 
-      {/* SLIDE SWIPEABLE */}
       <ScrollView
         ref={slideScrollRef}
         horizontal
@@ -349,23 +380,17 @@ export default function RegisterOnboardingScreen() {
         })}
       </ScrollView>
 
-      {/* DOTS INDICATOR */}
       <View style={styles.dotsRow}>
         {ONBOARDING_SLIDES.map((slide, i) => (
           <TouchableOpacity key={slide.key} onPress={() => goToSlide(i)}>
-            <View
-              style={[styles.dot, i === slideIndex && styles.dotActive]}
-            />
+            <View style={[styles.dot, i === slideIndex && styles.dotActive]} />
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* TOMBOL LANJUT */}
       <TouchableOpacity style={styles.nextBtn} onPress={handleNextSlide}>
         <Text style={styles.nextBtnText}>
-          {slideIndex === ONBOARDING_SLIDES.length - 1
-            ? "Mulai Sekarang"
-            : "Lanjut"}
+          {slideIndex === ONBOARDING_SLIDES.length - 1 ? "Mulai Sekarang" : "Lanjut"}
         </Text>
         <ArrowRight size={16} color="#FFFFFF" />
       </TouchableOpacity>
@@ -419,10 +444,7 @@ export default function RegisterOnboardingScreen() {
                 )}
               </View>
               <Text
-                style={[
-                  styles.progressLabel,
-                  isActive && styles.progressLabelActive,
-                ]}
+                style={[styles.progressLabel, isActive && styles.progressLabelActive]}
               >
                 {s.label}
               </Text>
@@ -457,13 +479,13 @@ export default function RegisterOnboardingScreen() {
 
         {renderProgress()}
 
-        {/* STEP CONTAINER (SCROLL DIKUNCI, DIGERAKKAN VIA TOMBOL) */}
         <ScrollView
           ref={stepScrollRef}
           horizontal
           pagingEnabled
           scrollEnabled={false}
           showsHorizontalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
           style={styles.stepScroll}
         >
           {/* STEP 1: NAMA */}
@@ -496,6 +518,7 @@ export default function RegisterOnboardingScreen() {
               <View style={styles.inputWrapper}>
                 <Phone size={16} color="#71717a" style={styles.inputIcon} />
                 <TextInput
+                  ref={whatsappInputRef}
                   style={styles.input}
                   placeholder="Cth: 081234567890"
                   placeholderTextColor="#52525b"
@@ -507,10 +530,7 @@ export default function RegisterOnboardingScreen() {
             </View>
 
             <View style={styles.stepButtonRow}>
-              <TouchableOpacity
-                style={styles.secondaryBtn}
-                onPress={() => goToStep(0)}
-              >
+              <TouchableOpacity style={styles.secondaryBtn} onPress={() => goToStep(0)}>
                 <Text style={styles.secondaryBtnText}>Kembali</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -531,7 +551,7 @@ export default function RegisterOnboardingScreen() {
                 <Lock size={16} color="#71717a" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Minimal 6 karakter"
+                  placeholder={`Minimal ${MIN_PASSWORD_LENGTH} karakter`}
                   placeholderTextColor="#52525b"
                   secureTextEntry
                   value={formData.password}
@@ -541,10 +561,7 @@ export default function RegisterOnboardingScreen() {
             </View>
 
             <View style={styles.stepButtonRow}>
-              <TouchableOpacity
-                style={styles.secondaryBtn}
-                onPress={() => goToStep(1)}
-              >
+              <TouchableOpacity style={styles.secondaryBtn} onPress={() => goToStep(1)}>
                 <Text style={styles.secondaryBtnText}>Kembali</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -599,6 +616,7 @@ export default function RegisterOnboardingScreen() {
 
           <ScrollView
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
             contentContainerStyle={styles.scrollContent}
             scrollEnabled={phase === "register"}
           >
@@ -607,8 +625,7 @@ export default function RegisterOnboardingScreen() {
             </Animated.View>
           </ScrollView>
 
-          {/* FLOATING ARROW BACK — selalu tampil, aman dari notch/status bar
-              di semua device (iOS, Android, web) karena berada di dalam SafeAreaView */}
+          {/* FLOATING ARROW BACK */}
           <TouchableOpacity
             style={styles.floatingBackBtn}
             onPress={handleBackPress}
@@ -618,6 +635,11 @@ export default function RegisterOnboardingScreen() {
           </TouchableOpacity>
         </ImageBackground>
       </KeyboardAvoidingView>
+
+      {/* WAJIB: komponen Toast harus dirender agar Toast.show() tampil.
+          Kalau <Toast /> sudah ada di app/_layout.js, HAPUS yang ini
+          supaya tidak muncul dobel. */}
+      <Toast />
     </SafeAreaView>
   );
 }
@@ -642,7 +664,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
 
-  // FLOATING ARROW BACK (fixed, tidak ikut scroll, aman di semua device)
+  // FLOATING ARROW BACK
   floatingBackBtn: {
     position: "absolute",
     top: Platform.OS === "ios" ? 54 : 20,
@@ -656,8 +678,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     zIndex: 50,
-    elevation: 6, // shadow Android
-    shadowColor: "#000", // shadow iOS
+    elevation: 6,
+    shadowColor: "#000",
     shadowOpacity: 0.3,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
@@ -680,7 +702,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   registerTopSpacer: {
-    height: 44, // ruang kosong biar konten tidak tertutup floating back button
+    height: 44,
   },
 
   // LOGO
@@ -778,7 +800,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  // PROGRESS (FORM MULTI-STEP)
+  // PROGRESS
   progressWrap: {
     marginBottom: 20,
   },
@@ -868,7 +890,7 @@ const styles = StyleSheet.create({
     marginHorizontal: -22,
   },
   stepPage: {
-    width: FORM_PAGE_WIDTH, // harus sama persis dengan lebar aktual stepScroll
+    width: FORM_PAGE_WIDTH,
     paddingHorizontal: 22,
   },
   inputGroup: {

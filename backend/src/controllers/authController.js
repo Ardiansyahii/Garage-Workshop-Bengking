@@ -41,8 +41,9 @@ exports.register = async (req, res, next) => {
     );
 
     if (existingUsers.length > 0) {
-      return res.status(400).json({
+      return res.status(409).json({
         success: false,
+        code: "WHATSAPP_ALREADY_REGISTERED",
         message: "Nomor WhatsApp sudah terdaftar! Silakan gunakan nomor lain.",
       });
     }
@@ -60,7 +61,7 @@ exports.register = async (req, res, next) => {
 
     const sendResult = await sendWhatsAppNotification(
       normalizedWhatsapp,
-      `Kode OTP Anda untuk verifikasi akun Apex Garage adalah *${otp}*.\n\nKode ini berlaku selama 5 menit.`,
+      `Halo ${name}, Ini Kode OTP Anda untuk verifikasi akun Apex Garage adalah *${otp}*.\n\nKode ini berlaku selama 5 menit.`,
     );
 
     if (!sendResult || !sendResult.success) {
@@ -169,7 +170,7 @@ exports.requestPasswordResetOtp = async (req, res, next) => {
 
     const sendResult = await sendWhatsAppNotification(
       normalizedWhatsapp,
-      `Kode OTP untuk reset password Apex Garage adalah *${otp}*.\n\nKode ini berlaku selama 5 menit.`,
+      `Halo ${users[0].name}, Kode OTP untuk reset password Apex Garage adalah *${otp}*.\n\nKode ini berlaku selama 5 menit.`,
     );
 
     if (!sendResult?.success) {
@@ -255,10 +256,15 @@ exports.login = async (req, res, next) => {
       });
     }
 
-    // Cari user di database
-    const [users] = await db.query("SELECT * FROM users WHERE whatsapp = ?", [
-      whatsapp,
-    ]);
+    // Normalisasi nomor agar input "0812..." tetap cocok dengan "62812..."
+    const normalizedWhatsapp = getNormalizedWhatsapp(whatsapp);
+
+    // Cari user di database (nomor mentah ATAU nomor ter-normalisasi)
+    const [users] = await db.query(
+      "SELECT * FROM users WHERE whatsapp = ? OR whatsapp = ?",
+      [whatsapp, normalizedWhatsapp],
+    );
+
     if (users.length === 0) {
       return res
         .status(400)
