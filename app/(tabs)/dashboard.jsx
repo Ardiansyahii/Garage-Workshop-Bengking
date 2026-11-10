@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
   StatusBar,
   StyleSheet,
   Modal,
@@ -19,7 +18,6 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   Wrench,
-  LogOut,
   MapPin,
   Phone,
   Store,
@@ -213,22 +211,6 @@ export default function UserDashboardScreen() {
     }, 150);
   };
 
-  const handleLogout = () => {
-    Alert.alert("Keluar Akun", "Apakah kamu yakin ingin keluar dari sesi ini?", [
-      { text: "Batal", style: "cancel" },
-      {
-        text: "Ya, Keluar",
-        style: "destructive",
-        onPress: async () => {
-          await AsyncStorage.removeItem("user");
-          await AsyncStorage.removeItem("auth_token");
-          await AsyncStorage.removeItem("user_session");
-          router.replace("/login");
-        },
-      },
-    ]);
-  };
-
   // ==========================================
   // FILTER & SORT: Bengkel (pencarian nama/alamat + filter lokasi + urutan)
   // ==========================================
@@ -350,11 +332,6 @@ export default function UserDashboardScreen() {
           </View>
         </View>
 
-        <View style={styles.headerActions}>
-          <TouchableOpacity onPress={handleLogout} style={styles.btnLogout}>
-            <LogOut size={14} color="#d4d4d8" />
-          </TouchableOpacity>
-        </View>
       </View>
 
       {/* MAIN CONTENT */}
@@ -889,18 +866,6 @@ const styles = StyleSheet.create({
     color: "#a1a1aa",
     fontSize: 11,
     fontFamily: "monospace",
-  },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  btnLogout: {
-    backgroundColor: "#18181b",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    padding: 8,
-    borderRadius: 10,
   },
   scrollView: {
     flex: 1,

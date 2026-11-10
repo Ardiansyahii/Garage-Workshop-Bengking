@@ -17,7 +17,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
-  ArrowLeft,
   Clock,
   Calendar,
   Car,
@@ -291,16 +290,7 @@ export default function RiwayatServisScreen() {
 
       {/* HEADER NAVBAR */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity
-            onPress={() => router.replace("/dashboard")}
-            style={styles.btnBack}
-          >
-            <ArrowLeft size={18} color="#e4e4e7" />
-          </TouchableOpacity>
-
-          <Text style={styles.headerTitle}>Riwayat Servis</Text>
-        </View>
+        <Text style={styles.headerTitle}>Riwayat Servis</Text>
       </View>
 
       {/* MAIN CONTENT */}
@@ -590,28 +580,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    zIndex: 10,
-  },
-  headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  btnBack: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: "#18181b",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    alignItems: "center",
     justifyContent: "center",
+    zIndex: 10,
   },
   headerTitle: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "900",
+    textAlign: "center",
   },
   btnPrimary: {
     backgroundColor: "#dc2626",
