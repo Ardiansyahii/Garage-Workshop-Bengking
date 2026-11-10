@@ -303,29 +303,52 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formOtp, otpModalVisible]);
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Konfirmasi Logout',
-      'Apakah Anda yakin ingin keluar dari akun?',
-      [
-        { text: 'Batal', style: 'cancel' },
-        {
-          text: 'Keluar',
-          style: 'destructive',
-          onPress: async () => {
-            await AsyncStorage.multiRemove([
-              STORAGE_KEYS.TOKEN,
-              STORAGE_KEYS.AUTH_TOKEN,
-              STORAGE_KEYS.USER,
-              STORAGE_KEYS.USER_SESSION,
-            ]);
-            router.replace('/');
-          },
-        },
-      ],
-      { cancelable: true },
-    );
-  };
+ // Proses logout yang sebenarnya (dipakai web & native)
+const performLogout = async () => {
+  try {
+    await AsyncStorage.multiRemove([
+      STORAGE_KEYS.TOKEN,
+      STORAGE_KEYS.AUTH_TOKEN,
+      STORAGE_KEYS.USER,
+      STORAGE_KEYS.USER_SESSION,
+    ]);
+  } catch (err) {
+    console.warn('Gagal menghapus sesi lokal:', err);
+  } finally {
+    // tetap redirect walaupun penghapusan storage error
+    router.replace('/');
+  }
+};
+
+const handleGoBack = () => {
+  if (router.canGoBack()) {
+    router.back();
+  } else {
+    // Kalau tidak ada halaman sebelumnya (misalnya buka langsung / refresh di web)
+    router.replace('/'); // ganti dengan route halaman utama kamu, mis. '/(tabs)' atau '/home'
+  }
+};
+
+const handleLogout = () => {
+  // Alert.alert dengan tombol tidak berfungsi di React Native Web
+  if (Platform.OS === 'web') {
+    const confirmed =
+      typeof window !== 'undefined' &&
+      window.confirm('Apakah Anda yakin ingin keluar dari akun?');
+    if (confirmed) performLogout();
+    return;
+  }
+
+  Alert.alert(
+    'Konfirmasi Logout',
+    'Apakah Anda yakin ingin keluar dari akun?',
+    [
+      { text: 'Batal', style: 'cancel' },
+      { text: 'Keluar', style: 'destructive', onPress: performLogout },
+    ],
+    { cancelable: true },
+  );
+};
 
   if (loading) {
     return (
@@ -348,9 +371,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     <View style={styles.container}>
       {/* ============ HEADER ============ */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation?.goBack?.()} activeOpacity={0.7} hitSlop={10}>
-          <ChevronLeft color={COLORS.white} size={24} />
-        </TouchableOpacity>
+       <TouchableOpacity onPress={handleGoBack} activeOpacity={0.7} hitSlop={10}>
+  <ChevronLeft color={COLORS.white} size={24} />
+</TouchableOpacity>
         <Text style={styles.headerTitle}>Profile</Text>
         <TouchableOpacity style={styles.notifButton} activeOpacity={0.7}>
           <Bell color={COLORS.red} size={19} />
