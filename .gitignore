@@ -1,3 +1,48 @@
+<<<<<<< HEAD
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+app-example
+
+# generated native folders
+/ios
+/android
+=======
 backend/node_modules
 backend/.env
 
@@ -14,3 +59,4 @@ bengkel-app/.env
 bengkel-app/.env.local
 
 .DS_Store
+>>>>>>> 565db41a64c15c0843e78d35700cd021461eb35b
