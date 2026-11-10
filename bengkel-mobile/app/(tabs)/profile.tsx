@@ -321,12 +321,7 @@ const performLogout = async () => {
 };
 
 const handleGoBack = () => {
-  if (router.canGoBack()) {
-    router.back();
-  } else {
-    // Kalau tidak ada halaman sebelumnya (misalnya buka langsung / refresh di web)
-    router.replace('/'); // ganti dengan route halaman utama kamu, mis. '/(tabs)' atau '/home'
-  }
+  router.replace('/dashboard'); // sesuaikan dengan nama route dashboard kamu
 };
 
 const handleLogout = () => {
