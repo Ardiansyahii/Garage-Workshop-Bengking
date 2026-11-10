@@ -319,6 +319,7 @@ export default function UserDashboardScreen() {
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#dc2626" />
         <Text style={styles.loadingText}>Memuat data...</Text>
+        <BottomNavBar activeTab="home" />
       </View>
     );
   }

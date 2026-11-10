@@ -15,8 +15,8 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import BottomNavBar from "../../components/Bottomnavbar";
 import {
-  ChevronLeft,
   ChevronRight,
   Bell,
   User as UserIcon,
@@ -320,10 +320,6 @@ const performLogout = async () => {
   }
 };
 
-const handleGoBack = () => {
-  router.replace('/dashboard'); // sesuaikan dengan nama route dashboard kamu
-};
-
 const handleLogout = () => {
   // Alert.alert dengan tombol tidak berfungsi di React Native Web
   if (Platform.OS === 'web') {
@@ -349,6 +345,7 @@ const handleLogout = () => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={COLORS.red} />
+        <BottomNavBar activeTab="profile" />
       </View>
     );
   }
@@ -366,9 +363,7 @@ const handleLogout = () => {
     <View style={styles.container}>
       {/* ============ HEADER ============ */}
       <View style={styles.header}>
-       <TouchableOpacity onPress={handleGoBack} activeOpacity={0.7} hitSlop={10}>
-  <ChevronLeft color={COLORS.white} size={24} />
-</TouchableOpacity>
+        <View style={styles.headerSideSpacer} />
         <Text style={styles.headerTitle}>Profile</Text>
         <TouchableOpacity style={styles.notifButton} activeOpacity={0.7}>
           <Bell color={COLORS.red} size={19} />
@@ -606,6 +601,7 @@ const handleLogout = () => {
           <Text style={styles.toastText}>{toast.message}</Text>
         </Animated.View>
       )}
+      <BottomNavBar activeTab="profile" />
     </View>
   );
 };
@@ -783,7 +779,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  headerTitle: { color: COLORS.white, fontSize: 16, fontWeight: '700', letterSpacing: 0.3 },
+  headerSideSpacer: { width: 34 },
+  headerTitle: { flex: 1, textAlign: 'center', color: COLORS.white, fontSize: 16, fontWeight: '700', letterSpacing: 0.3 },
   notifButton: {
     width: 34,
     height: 34,
@@ -802,7 +799,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.red,
   },
 
-  scrollContent: { paddingHorizontal: 20, paddingTop: 8 },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 120 },
 
   avatarSection: { alignItems: 'center', marginBottom: 28 },
   avatarGlowOuter: {
@@ -989,7 +986,7 @@ const styles = StyleSheet.create({
   // Toast
   toast: {
     position: 'absolute',
-    bottom: 30,
+    bottom: 110,
     left: 20,
     right: 20,
     borderRadius: 14,

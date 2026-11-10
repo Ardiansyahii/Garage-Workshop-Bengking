@@ -280,6 +280,7 @@ export default function RiwayatServisScreen() {
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#dc2626" />
         <Text style={styles.loadingText}>Memuat data...</Text>
+        <BottomNavBar activeTab="riwayat" />
       </View>
     );
   }
@@ -559,7 +560,7 @@ export default function RiwayatServisScreen() {
           </View>
         </View>
       </Modal>
-      <BottomNavBar activeTab="Riwayat" />
+      <BottomNavBar activeTab="riwayat" />
     </SafeAreaView>
   );
 }
@@ -632,7 +633,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 120,
   },
   tabsContainer: {
     backgroundColor: "rgba(9, 9, 11, 0.85)",

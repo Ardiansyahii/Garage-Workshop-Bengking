@@ -123,7 +123,7 @@ function SideTabButton({ tab, isActive, onPress }) {
 // Tombol Home -> lingkaran kaca yang mengambang DI LUAR bar (bukan child dari
 // BlurView yang overflow:hidden), makanya bisa beneran keluar setengah dari
 // tepi atas bar tanpa kepotong.
-function HomeButton({ onPress }) {
+function HomeButton({ isActive, onPress }) {
   const scale = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
@@ -153,15 +153,23 @@ function HomeButton({ onPress }) {
         onPress={onPress}
         hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
       >
-        <Animated.View style={[styles.homeGlow, { transform: [{ scale }] }]}>
+        <Animated.View style={[styles.homeGlow, isActive && styles.homeGlowActive, { transform: [{ scale }] }]}>
           <BlurView
             intensity={40}
             tint="dark"
             experimentalBlurMethod={Platform.OS === "android" ? "dimezisBlurView" : undefined}
-            style={styles.homeBlur}
+            style={[styles.homeBlur, isActive ? styles.homeBlurActive : styles.homeBlurInactive]}
           >
-            <View style={styles.homeTint} />
-            <Home size={27} color="#FFFFFF" strokeWidth={2.4} />
+            <View style={[styles.homeTint, isActive ? styles.homeTintActive : styles.homeTintInactive]} />
+            <LinearGradient
+              pointerEvents="none"
+              colors={["rgba(255,255,255,0.34)", "rgba(255,255,255,0.05)", "rgba(255,255,255,0.01)"]}
+              locations={[0, 0.35, 1]}
+              start={{ x: 0.2, y: 0 }}
+              end={{ x: 0.8, y: 1 }}
+              style={styles.homeSheen}
+            />
+            <Home size={27} color={isActive ? "#FFFFFF" : "#a1a1aa"} strokeWidth={2.4} />
           </BlurView>
         </Animated.View>
       </TouchableOpacity>
@@ -218,6 +226,14 @@ export default function BottomNavBar({ activeTab }) {
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFillObject}
           />
+          <LinearGradient
+            pointerEvents="none"
+            colors={["rgba(255,255,255,0.17)", "rgba(255,255,255,0.025)", "rgba(255,255,255,0.06)"]}
+            locations={[0, 0.48, 1]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={styles.glassSheen}
+          />
 
           <View style={styles.innerRow}>
             <SideTabButton
@@ -241,8 +257,10 @@ export default function BottomNavBar({ activeTab }) {
         {/* Dirender SETELAH BlurView (bukan di dalamnya) supaya tidak ke-clip
             oleh overflow:hidden milik bar -> ini yang bikin lingkarannya bisa
             beneran nongol keluar setengah dari tepi atas bar. */}
-        <HomeButton onPress={() => handlePress(HOME_TAB)} />
-        <Text style={styles.homeLabel}>{HOME_TAB.label}</Text>
+        <HomeButton isActive={currentTab === HOME_TAB.key} onPress={() => handlePress(HOME_TAB)} />
+        <Text style={[styles.homeLabel, currentTab === HOME_TAB.key ? styles.homeLabelActive : styles.homeLabelInactive]}>
+          {HOME_TAB.label}
+        </Text>
       </View>
     </View>
   );
@@ -271,11 +289,21 @@ const styles = StyleSheet.create({
   blurContainer: {
     borderRadius: 30,
     overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.20)",
   },
   darkTint: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor:
-      Platform.OS === "android" ? "rgba(9,9,11,0.28)" : "rgba(9,9,11,0.16)",
+      Platform.OS === "android" ? "rgba(9,9,11,0.18)" : "rgba(9,9,11,0.10)",
+  },
+  glassSheen: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.9,
+  },
+  homeSheen: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: HOME_SIZE / 2,
   },
   innerRow: {
     flexDirection: "row",
@@ -334,11 +362,15 @@ const styles = StyleSheet.create({
     width: HOME_SIZE,
     height: HOME_SIZE,
     borderRadius: HOME_SIZE / 2,
-    shadowColor: "#ef4444",
-    shadowOpacity: 0.55,
+    shadowColor: "#000",
+    shadowOpacity: 0.25,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 6 },
     elevation: 10,
+  },
+  homeGlowActive: {
+    shadowColor: "#ef4444",
+    shadowOpacity: 0.55,
   },
   homeBlur: {
     flex: 1,
@@ -347,11 +379,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1.5,
+  },
+  homeBlurActive: {
     borderColor: "rgba(239,68,68,0.5)",
+  },
+  homeBlurInactive: {
+    borderColor: "rgba(161,161,170,0.25)",
   },
   homeTint: {
     ...StyleSheet.absoluteFillObject,
+  },
+  homeTintActive: {
     backgroundColor: "rgba(220,38,38,0.55)",
+  },
+  homeTintInactive: {
+    backgroundColor: "rgba(39,39,42,0.72)",
   },
   homeLabel: {
     position: "absolute",
@@ -361,6 +403,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 10,
     fontWeight: "700",
+  },
+  homeLabelActive: {
     color: "#ff5b5b",
+  },
+  homeLabelInactive: {
+    color: "#a1a1aa",
   },
 });
