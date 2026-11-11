@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  ImageBackground,
   ActivityIndicator,
   StyleSheet,
   StatusBar,
@@ -31,9 +30,15 @@ import {
   Bell,
   ShieldCheck,
   Check,
+  Eye,
+  EyeOff,
 } from "lucide-react-native";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+// Lebar konten dibatasi agar tetap proporsional di web / tablet.
+// Di HP (layar < 440) nilainya sama dengan lebar layar seperti sebelumnya.
+const MAX_CONTENT_WIDTH = 440;
+const { width: WINDOW_WIDTH } = Dimensions.get("window");
+const SCREEN_WIDTH = Math.min(WINDOW_WIDTH, MAX_CONTENT_WIDTH);
 // Lebar ScrollView step form = lebar layar dikurangi padding kiri+kanan
 // phaseContainer (20+20). Harus sama dengan lebar aktual stepScroll.
 const FORM_PAGE_WIDTH = SCREEN_WIDTH - 40;
@@ -129,6 +134,9 @@ export default function RegisterOnboardingScreen() {
     password: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+  // State tambahan khusus UI (efek fokus input & tampil/sembunyi password)
+  const [focusedField, setFocusedField] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Fade-in animation awal
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -335,7 +343,11 @@ export default function RegisterOnboardingScreen() {
   const renderOnboarding = () => (
     <View style={styles.phaseContainer}>
       <View style={styles.onboardingTopBar}>
-        <TouchableOpacity style={styles.skipBtn} onPress={handleSkipOnboarding}>
+        <TouchableOpacity
+          style={styles.skipBtn}
+          activeOpacity={0.7}
+          onPress={handleSkipOnboarding}
+        >
           <Text style={styles.skipBtnText}>Lewati</Text>
         </TouchableOpacity>
       </View>
@@ -349,9 +361,7 @@ export default function RegisterOnboardingScreen() {
         <View style={styles.logoIcon}>
           <Wrench size={22} color="#FFFFFF" />
         </View>
-        <Text style={styles.logoText}>
-          BENGKEL<Text style={{ color: "#dc2626" }}>KU</Text>
-        </Text>
+        <Text style={styles.logoText}>BENGKELKU</Text>
       </Animated.View>
 
       <ScrollView
@@ -371,7 +381,7 @@ export default function RegisterOnboardingScreen() {
           return (
             <View key={slide.key} style={styles.slide}>
               <View style={styles.slideIconWrap}>
-                <SlideIcon size={44} color="#ef4444" />
+                <SlideIcon size={40} color="#18181b" />
               </View>
               <Text style={styles.slideTitle}>{slide.title}</Text>
               <Text style={styles.slideDescription}>{slide.description}</Text>
@@ -388,7 +398,11 @@ export default function RegisterOnboardingScreen() {
         ))}
       </View>
 
-      <TouchableOpacity style={styles.nextBtn} onPress={handleNextSlide}>
+      <TouchableOpacity
+        style={styles.nextBtn}
+        activeOpacity={0.85}
+        onPress={handleNextSlide}
+      >
         <Text style={styles.nextBtnText}>
           {slideIndex === ONBOARDING_SLIDES.length - 1 ? "Mulai Sekarang" : "Lanjut"}
         </Text>
@@ -396,9 +410,9 @@ export default function RegisterOnboardingScreen() {
       </TouchableOpacity>
 
       <View style={styles.loginRow}>
-        <Text style={styles.loginText}>Sudah punya akun? </Text>
+        <Text style={styles.loginText}>Already have an account? </Text>
         <TouchableOpacity onPress={() => router.push(ROUTES.login)}>
-          <Text style={styles.loginLink}>Masuk di sini</Text>
+          <Text style={styles.loginLink}>Login</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -466,15 +480,13 @@ export default function RegisterOnboardingScreen() {
         <View style={styles.logoIcon}>
           <Wrench size={22} color="#FFFFFF" />
         </View>
-        <Text style={styles.logoText}>
-          BENGKEL<Text style={{ color: "#dc2626" }}>KU</Text>
-        </Text>
+        <Text style={styles.logoText}>BENGKELKU</Text>
       </View>
 
       <View style={styles.formCard}>
-        <Text style={styles.formTitle}>Buat Akun Pelanggan</Text>
+        <Text style={styles.formTitle}>Create Account</Text>
         <Text style={styles.formSubtitle}>
-          Lengkapi identitas diri untuk mulai menggunakan layanan.
+          Buat akun baru Anda dan temukan pengalaman terbaik bersama kami.
         </Text>
 
         {renderProgress()}
@@ -491,21 +503,36 @@ export default function RegisterOnboardingScreen() {
           {/* STEP 1: NAMA */}
           <View style={styles.stepPage}>
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>NAMA LENGKAP</Text>
-              <View style={styles.inputWrapper}>
-                <User size={16} color="#71717a" style={styles.inputIcon} />
+              <Text style={styles.inputLabel}>Nama lengkap</Text>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  focusedField === "name" && styles.inputWrapperFocused,
+                ]}
+              >
+                <User
+                  size={18}
+                  color={focusedField === "name" ? "#18181b" : "#a1a1aa"}
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   style={styles.input}
                   placeholder="Cth: Ardi Pratama"
-                  placeholderTextColor="#52525b"
+                  placeholderTextColor="#a1a1aa"
                   value={formData.name}
                   onChangeText={(v) => handleChange("name", v)}
                   autoFocus={phase === "register" && step === 0}
+                  onFocus={() => setFocusedField("name")}
+                  onBlur={() => setFocusedField(null)}
                 />
               </View>
             </View>
 
-            <TouchableOpacity style={styles.submitBtn} onPress={handleNextStep}>
+            <TouchableOpacity
+              style={styles.submitBtn}
+              activeOpacity={0.85}
+              onPress={handleNextStep}
+            >
               <Text style={styles.submitBtnText}>Lanjut</Text>
               <ArrowRight size={16} color="#FFFFFF" />
             </TouchableOpacity>
@@ -514,27 +541,43 @@ export default function RegisterOnboardingScreen() {
           {/* STEP 2: WHATSAPP */}
           <View style={styles.stepPage}>
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>NOMOR WHATSAPP AKTIF</Text>
-              <View style={styles.inputWrapper}>
-                <Phone size={16} color="#71717a" style={styles.inputIcon} />
+              <Text style={styles.inputLabel}>Nomor WhatsApp aktif</Text>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  focusedField === "whatsapp" && styles.inputWrapperFocused,
+                ]}
+              >
+                <Phone
+                  size={18}
+                  color={focusedField === "whatsapp" ? "#18181b" : "#a1a1aa"}
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   ref={whatsappInputRef}
                   style={styles.input}
                   placeholder="Cth: 081234567890"
-                  placeholderTextColor="#52525b"
+                  placeholderTextColor="#a1a1aa"
                   keyboardType="phone-pad"
                   value={formData.whatsapp}
                   onChangeText={(v) => handleChange("whatsapp", v)}
+                  onFocus={() => setFocusedField("whatsapp")}
+                  onBlur={() => setFocusedField(null)}
                 />
               </View>
             </View>
 
             <View style={styles.stepButtonRow}>
-              <TouchableOpacity style={styles.secondaryBtn} onPress={() => goToStep(0)}>
+              <TouchableOpacity
+                style={styles.secondaryBtn}
+                activeOpacity={0.7}
+                onPress={() => goToStep(0)}
+              >
                 <Text style={styles.secondaryBtnText}>Kembali</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.submitBtn, { flex: 1 }]}
+                activeOpacity={0.85}
                 onPress={handleNextStep}
               >
                 <Text style={styles.submitBtnText}>Lanjut</Text>
@@ -546,22 +589,50 @@ export default function RegisterOnboardingScreen() {
           {/* STEP 3: PASSWORD */}
           <View style={styles.stepPage}>
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>PASSWORD</Text>
-              <View style={styles.inputWrapper}>
-                <Lock size={16} color="#71717a" style={styles.inputIcon} />
+              <Text style={styles.inputLabel}>Password</Text>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  focusedField === "password" && styles.inputWrapperFocused,
+                ]}
+              >
+                <Lock
+                  size={18}
+                  color={focusedField === "password" ? "#18181b" : "#a1a1aa"}
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   style={styles.input}
                   placeholder={`Minimal ${MIN_PASSWORD_LENGTH} karakter`}
-                  placeholderTextColor="#52525b"
-                  secureTextEntry
+                  placeholderTextColor="#a1a1aa"
+                  secureTextEntry={!showPassword}
                   value={formData.password}
                   onChangeText={(v) => handleChange("password", v)}
+                  onFocus={() => setFocusedField("password")}
+                  onBlur={() => setFocusedField(null)}
                 />
+                <TouchableOpacity
+                  onPress={() => setShowPassword((v) => !v)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  accessibilityLabel={
+                    showPassword ? "Sembunyikan password" : "Tampilkan password"
+                  }
+                >
+                  {showPassword ? (
+                    <EyeOff size={18} color="#71717a" />
+                  ) : (
+                    <Eye size={18} color="#71717a" />
+                  )}
+                </TouchableOpacity>
               </View>
             </View>
 
             <View style={styles.stepButtonRow}>
-              <TouchableOpacity style={styles.secondaryBtn} onPress={() => goToStep(1)}>
+              <TouchableOpacity
+                style={styles.secondaryBtn}
+                activeOpacity={0.7}
+                onPress={() => goToStep(1)}
+              >
                 <Text style={styles.secondaryBtnText}>Kembali</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -570,6 +641,7 @@ export default function RegisterOnboardingScreen() {
                   { flex: 1 },
                   isLoading && styles.submitBtnDisabled,
                 ]}
+                activeOpacity={0.85}
                 onPress={handleRegister}
                 disabled={isLoading}
               >
@@ -579,7 +651,7 @@ export default function RegisterOnboardingScreen() {
                     <Text style={styles.submitBtnText}>Memproses...</Text>
                   </>
                 ) : (
-                  <Text style={styles.submitBtnText}>Daftar Sekarang</Text>
+                  <Text style={styles.submitBtnText}>Create Account</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -587,9 +659,9 @@ export default function RegisterOnboardingScreen() {
         </ScrollView>
 
         <View style={styles.loginRow}>
-          <Text style={styles.loginText}>Sudah punya akun? </Text>
+          <Text style={styles.loginText}>Already have an account? </Text>
           <TouchableOpacity onPress={() => router.push(ROUTES.login)}>
-            <Text style={styles.loginLink}>Masuk di sini</Text>
+            <Text style={styles.loginLink}>Login</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -602,18 +674,12 @@ export default function RegisterOnboardingScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <ImageBackground
-          source={{ uri: "https://via.placeholder.com/800x1200" }}
-          style={styles.bg}
-          imageStyle={{ opacity: 0.25 }}
-        >
-          <View style={styles.overlay} />
-
+        <View style={styles.bg}>
           <ScrollView
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
@@ -626,14 +692,19 @@ export default function RegisterOnboardingScreen() {
           </ScrollView>
 
           {/* FLOATING ARROW BACK */}
-          <TouchableOpacity
-            style={styles.floatingBackBtn}
-            onPress={handleBackPress}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <ArrowLeft size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-        </ImageBackground>
+          <View style={styles.floatingBackWrap} pointerEvents="box-none">
+            <View style={styles.floatingBackInner} pointerEvents="box-none">
+              <TouchableOpacity
+                style={styles.floatingBackBtn}
+                activeOpacity={0.7}
+                onPress={handleBackPress}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <ArrowLeft size={20} color="#18181b" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </KeyboardAvoidingView>
 
       {/* WAJIB: komponen Toast harus dirender agar Toast.show() tampil.
@@ -644,43 +715,59 @@ export default function RegisterOnboardingScreen() {
   );
 }
 
+const webNoOutline = Platform.select({
+  web: { outlineStyle: "none" },
+  default: {},
+});
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#FFFFFF",
   },
   bg: {
     flex: 1,
+    backgroundColor: "#FFFFFF",
   },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.7)",
-  },
+  // Konten dipusatkan & dibatasi lebarnya (selaras SCREEN_WIDTH di atas)
   scrollContent: {
     flexGrow: 1,
     paddingBottom: 40,
+    width: "100%",
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: "center",
   },
   phaseContainer: {
     padding: 20,
   },
 
   // FLOATING ARROW BACK
-  floatingBackBtn: {
+  floatingBackWrap: {
     position: "absolute",
     top: Platform.OS === "ios" ? 54 : 20,
-    left: 20,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    zIndex: 50,
+  },
+  floatingBackInner: {
+    width: "100%",
+    maxWidth: MAX_CONTENT_WIDTH,
+    paddingHorizontal: 20,
+    alignItems: "flex-start",
+  },
+  floatingBackBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(24, 24, 27, 0.85)",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#27272a",
+    borderColor: "#e4e4e7",
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 50,
-    elevation: 6,
+    elevation: 2,
     shadowColor: "#000",
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.08,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
   },
@@ -698,8 +785,8 @@ const styles = StyleSheet.create({
   },
   skipBtnText: {
     color: "#71717a",
-    fontSize: 12,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "600",
   },
   registerTopSpacer: {
     height: 44,
@@ -709,22 +796,23 @@ const styles = StyleSheet.create({
   logoRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 10,
     marginBottom: 24,
   },
   logoIcon: {
     width: 40,
     height: 40,
-    borderRadius: 12,
-    backgroundColor: "#dc2626",
+    borderRadius: 20,
+    backgroundColor: "#18181b",
     justifyContent: "center",
     alignItems: "center",
   },
   logoText: {
-    color: "#FFFFFF",
-    fontWeight: "900",
-    fontSize: 20,
-    letterSpacing: 1,
+    color: "#18181b",
+    fontWeight: "800",
+    fontSize: 18,
+    letterSpacing: 1.5,
   },
 
   // SLIDES ONBOARDING
@@ -740,26 +828,26 @@ const styles = StyleSheet.create({
   slideIconWrap: {
     width: 88,
     height: 88,
-    borderRadius: 24,
-    backgroundColor: "rgba(9, 9, 11, 0.85)",
+    borderRadius: 44,
+    backgroundColor: "#f4f4f5",
     borderWidth: 1,
-    borderColor: "#27272a",
+    borderColor: "#e4e4e7",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 24,
   },
   slideTitle: {
-    color: "#FFFFFF",
-    fontSize: 22,
+    color: "#3f3f46",
+    fontSize: 24,
     fontWeight: "900",
     textAlign: "center",
-    lineHeight: 28,
+    lineHeight: 30,
     marginBottom: 12,
   },
   slideDescription: {
-    color: "#a1a1aa",
-    fontSize: 13,
-    lineHeight: 20,
+    color: "#71717a",
+    fontSize: 14,
+    lineHeight: 22,
     textAlign: "center",
     paddingHorizontal: 8,
   },
@@ -777,11 +865,11 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 999,
-    backgroundColor: "#3f3f46",
+    backgroundColor: "#e4e4e7",
   },
   dotActive: {
     width: 22,
-    backgroundColor: "#dc2626",
+    backgroundColor: "#18181b",
   },
 
   // NEXT BUTTON
@@ -790,30 +878,30 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#dc2626",
-    paddingVertical: 15,
-    borderRadius: 12,
+    backgroundColor: "#18181b",
+    height: 54,
+    borderRadius: 999,
   },
   nextBtnText: {
     color: "#FFFFFF",
-    fontWeight: "bold",
-    fontSize: 14,
+    fontWeight: "600",
+    fontSize: 15,
   },
 
   // PROGRESS
   progressWrap: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   progressBarTrack: {
     height: 4,
-    backgroundColor: "#27272a",
+    backgroundColor: "#e4e4e7",
     borderRadius: 999,
     overflow: "hidden",
     marginBottom: 14,
   },
   progressBarFill: {
     height: "100%",
-    backgroundColor: "#dc2626",
+    backgroundColor: "#18181b",
     borderRadius: 999,
   },
   progressStepsRow: {
@@ -826,25 +914,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   progressCircle: {
-    width: 24,
-    height: 24,
+    width: 26,
+    height: 26,
     borderRadius: 999,
-    backgroundColor: "#18181b",
+    backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: "#27272a",
+    borderColor: "#d4d4d8",
     justifyContent: "center",
     alignItems: "center",
   },
   progressCircleActive: {
-    backgroundColor: "#dc2626",
-    borderColor: "#dc2626",
+    backgroundColor: "#18181b",
+    borderColor: "#18181b",
   },
   progressCircleDone: {
-    backgroundColor: "#16a34a",
-    borderColor: "#16a34a",
+    backgroundColor: "#52525b",
+    borderColor: "#52525b",
   },
   progressCircleText: {
-    color: "#71717a",
+    color: "#a1a1aa",
     fontSize: 11,
     fontWeight: "700",
   },
@@ -852,74 +940,79 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
   },
   progressLabel: {
-    color: "#71717a",
-    fontSize: 10,
+    color: "#a1a1aa",
+    fontSize: 11,
     fontWeight: "600",
   },
   progressLabelActive: {
-    color: "#e4e4e7",
+    color: "#18181b",
   },
   progressCaption: {
-    color: "#52525b",
-    fontSize: 10,
+    color: "#a1a1aa",
+    fontSize: 11,
     textAlign: "center",
     marginTop: 10,
   },
 
-  // FORM CARD
+  // FORM (flat, tanpa card; lebar halaman = FORM_PAGE_WIDTH)
   formCard: {
-    backgroundColor: "rgba(9, 9, 11, 0.85)",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 24,
-    padding: 22,
+    backgroundColor: "transparent",
     overflow: "hidden",
   },
   formTitle: {
-    color: "#FFFFFF",
-    fontSize: 22,
+    color: "#3f3f46",
+    fontSize: 32,
     fontWeight: "900",
-    marginBottom: 4,
+    textAlign: "center",
+    marginBottom: 8,
   },
   formSubtitle: {
-    color: "#a1a1aa",
-    fontSize: 12,
-    marginBottom: 20,
+    color: "#71717a",
+    fontSize: 14,
+    lineHeight: 22,
+    textAlign: "center",
+    marginBottom: 28,
+    paddingHorizontal: 8,
   },
   stepScroll: {
-    marginHorizontal: -22,
+    marginHorizontal: 0,
   },
   stepPage: {
     width: FORM_PAGE_WIDTH,
-    paddingHorizontal: 22,
+    paddingHorizontal: 0,
   },
   inputGroup: {
     marginBottom: 20,
   },
   inputLabel: {
-    color: "#a1a1aa",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1,
+    color: "#3f3f46",
+    fontSize: 13,
+    fontWeight: "600",
     marginBottom: 8,
   },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(24, 24, 27, 0.6)",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 12,
-    paddingHorizontal: 14,
+    backgroundColor: "#f4f4f5",
+    borderWidth: 1.5,
+    borderColor: "transparent",
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    minHeight: 54,
+  },
+  inputWrapperFocused: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#18181b",
   },
   inputIcon: {
     marginRight: 10,
   },
   input: {
     flex: 1,
-    color: "#FFFFFF",
-    fontSize: 13,
+    color: "#18181b",
+    fontSize: 14,
     paddingVertical: 14,
+    ...webNoOutline,
   },
   stepButtonRow: {
     flexDirection: "row",
@@ -928,33 +1021,34 @@ const styles = StyleSheet.create({
   secondaryBtn: {
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#18181b",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#27272a",
-    paddingHorizontal: 18,
-    borderRadius: 12,
+    borderColor: "#d4d4d8",
+    paddingHorizontal: 22,
+    height: 54,
+    borderRadius: 999,
   },
   secondaryBtnText: {
-    color: "#a1a1aa",
-    fontWeight: "700",
-    fontSize: 13,
+    color: "#18181b",
+    fontWeight: "600",
+    fontSize: 14,
   },
   submitBtn: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#dc2626",
-    paddingVertical: 15,
-    borderRadius: 12,
+    backgroundColor: "#18181b",
+    height: 54,
+    borderRadius: 999,
   },
   submitBtnDisabled: {
-    backgroundColor: "#27272a",
+    backgroundColor: "#a1a1aa",
   },
   submitBtnText: {
     color: "#FFFFFF",
-    fontWeight: "bold",
-    fontSize: 14,
+    fontWeight: "600",
+    fontSize: 15,
   },
 
   // LOGIN / FOOTER
@@ -962,23 +1056,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 22,
-    paddingTop: 18,
+    marginTop: 24,
+    paddingTop: 20,
     borderTopWidth: 1,
-    borderTopColor: "#27272a",
+    borderTopColor: "#f4f4f5",
   },
   loginText: {
-    color: "#a1a1aa",
-    fontSize: 12,
+    color: "#71717a",
+    fontSize: 13,
   },
   loginLink: {
-    color: "#ef4444",
-    fontWeight: "bold",
-    fontSize: 12,
+    color: "#18181b",
+    fontWeight: "700",
+    fontSize: 13,
     textDecorationLine: "underline",
   },
   footerText: {
-    color: "#52525b",
+    color: "#a1a1aa",
     fontSize: 10,
     textAlign: "center",
     marginTop: 24,

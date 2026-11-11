@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  ImageBackground,
   Alert,
   ActivityIndicator,
   StyleSheet,
@@ -18,7 +17,13 @@ import {
 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { Wrench, ArrowLeft, ArrowRight } from "lucide-react-native";
+import {
+  Wrench,
+  ArrowLeft,
+  ArrowRight,
+  ShieldCheck,
+  Phone,
+} from "lucide-react-native";
 
 // Samakan dengan API_URL di RegisterScreen/LoginScreen kamu
 const API_URL = Platform.select({
@@ -35,6 +40,8 @@ const ROUTES = {
   login: "/Login",
 };
 
+const MAX_CONTENT_WIDTH = 440;
+
 export default function VerifyScreen() {
   const router = useRouter();
   const params = useLocalSearchParams(); // pengganti useSearchParams() Next.js
@@ -42,6 +49,9 @@ export default function VerifyScreen() {
   const [otpDigits, setOtpDigits] = useState(["", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
   const otpRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
+  // State tambahan khusus UI (efek fokus)
+  const [focusedOtp, setFocusedOtp] = useState(null);
+  const [whatsappFocused, setWhatsappFocused] = useState(false);
 
   const otp = otpDigits.join("");
 
@@ -151,20 +161,15 @@ export default function VerifyScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <ImageBackground
-          source={{ uri: "https://via.placeholder.com/800x1200" }} // Ganti dengan asset banner-bg kamu
-          style={styles.bg}
-          imageStyle={{ opacity: 0.25 }}
-        >
-          <View style={styles.overlay} />
-
+        <View style={styles.bg}>
           <ScrollView
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
             contentContainerStyle={styles.scrollContent}
           >
             {/* Spacer biar konten tidak tertutup floating back button */}
@@ -181,11 +186,9 @@ export default function VerifyScreen() {
               ]}
             >
               <View style={styles.logoIcon}>
-                <Wrench size={22} color="#FFFFFF" />
+                <Wrench size={16} color="#FFFFFF" />
               </View>
-              <Text style={styles.logoText}>
-                BENGKEL<Text style={{ color: "#dc2626" }}>KU</Text>
-              </Text>
+              <Text style={styles.logoText}>BENGKELKU</Text>
             </Animated.View>
 
             {/* JUDUL */}
@@ -193,40 +196,54 @@ export default function VerifyScreen() {
               style={{
                 opacity: fadeAnim,
                 transform: [{ translateY: translateAnim }],
+                alignItems: "center",
               }}
             >
-              <Text style={styles.heroTitle}>Verifikasi WhatsApp.</Text>
+              <View style={styles.verifyCircle}>
+                <ShieldCheck size={36} color="#18181b" />
+              </View>
+              <Text style={styles.heroTitle}>Verify Your Account</Text>
               <Text style={styles.heroSubtitle}>
-                Masukkan 4 digit kode OTP yang telah dikirimkan ke nomor
-                WhatsApp kamu.
+                Kami telah mengirimkan kode verifikasi ke nomor WhatsApp Anda.
+                Silakan periksa pesan masuk dan masukkan 4 digit kode untuk
+                melanjutkan.
               </Text>
             </Animated.View>
 
-            {/* FORM CARD */}
+            {/* FORM */}
             <View style={styles.formCard}>
-              <Text style={styles.formTitle}>Masukkan Kode OTP</Text>
-              <Text style={styles.formSubtitle}>
-                Cek pesan masuk WhatsApp dari Fonnte.
-              </Text>
-
               {/* NOMOR WHATSAPP */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>NOMOR WHATSAPP</Text>
-                <View style={styles.inputWrapper}>
+                <Text style={styles.inputLabel}>Nomor WhatsApp</Text>
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    whatsappFocused && styles.inputWrapperFocused,
+                  ]}
+                >
+                  <Phone
+                    size={18}
+                    color={whatsappFocused ? "#18181b" : "#a1a1aa"}
+                    style={styles.inputIcon}
+                  />
                   <TextInput
                     style={styles.input}
                     placeholder="Cth: 081234567890"
-                    placeholderTextColor="#52525b"
+                    placeholderTextColor="#a1a1aa"
                     keyboardType="phone-pad"
                     value={whatsapp}
                     onChangeText={setWhatsapp}
+                    onFocus={() => setWhatsappFocused(true)}
+                    onBlur={() => setWhatsappFocused(false)}
                   />
                 </View>
               </View>
 
               {/* KODE OTP - 4 kotak terpisah */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>KODE OTP (4 DIGIT)</Text>
+                <Text style={[styles.inputLabel, { textAlign: "center" }]}>
+                  Kode OTP (4 digit)
+                </Text>
                 <View style={styles.otpBoxRow}>
                   {otpDigits.map((digit, index) => (
                     <TextInput
@@ -235,21 +252,30 @@ export default function VerifyScreen() {
                       style={[
                         styles.otpBox,
                         digit ? styles.otpBoxFilled : null,
+                        focusedOtp === index ? styles.otpBoxFocused : null,
                       ]}
                       keyboardType="number-pad"
                       maxLength={1}
                       value={digit}
                       onChangeText={(text) => handleOtpChange(text, index)}
                       onKeyPress={(e) => handleOtpKeyPress(e, index)}
+                      onFocus={() => setFocusedOtp(index)}
+                      onBlur={() =>
+                        setFocusedOtp((prev) => (prev === index ? null : prev))
+                      }
                       textAlign="center"
                     />
                   ))}
                 </View>
+                <Text style={styles.formSubtitle}>
+                  Cek pesan masuk WhatsApp dari Fonnte.
+                </Text>
               </View>
 
               {/* TOMBOL VERIFIKASI */}
               <TouchableOpacity
                 style={[styles.submitBtn, isLoading && styles.submitBtnDisabled]}
+                activeOpacity={0.85}
                 onPress={handleVerify}
                 disabled={isLoading}
               >
@@ -260,7 +286,7 @@ export default function VerifyScreen() {
                   </>
                 ) : (
                   <>
-                    <Text style={styles.submitBtnText}>Verifikasi Akun</Text>
+                    <Text style={styles.submitBtnText}>Verify Account</Text>
                     <ArrowRight size={16} color="#FFFFFF" />
                   </>
                 )}
@@ -275,183 +301,225 @@ export default function VerifyScreen() {
           {/* FLOATING ARROW BACK — selalu tampil, aman dari notch/status bar
               di semua device (iOS, Android, web). Hardware back Android
               juga dipetakan ke fungsi yang sama lewat handleBackPress(). */}
-          <TouchableOpacity
-            style={styles.floatingBackBtn}
-            onPress={handleBackPress}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <ArrowLeft size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-        </ImageBackground>
+          <View style={styles.floatingBackWrap} pointerEvents="box-none">
+            <View style={styles.floatingBackInner} pointerEvents="box-none">
+              <TouchableOpacity
+                style={styles.floatingBackBtn}
+                activeOpacity={0.7}
+                onPress={handleBackPress}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <ArrowLeft size={20} color="#18181b" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
+const webNoOutline = Platform.select({
+  web: { outlineStyle: "none" },
+  default: {},
+});
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#FFFFFF",
   },
   bg: {
     flex: 1,
+    backgroundColor: "#FFFFFF",
   },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.7)",
-  },
+  // Konten dipusatkan & dibatasi lebarnya agar rapi di web / tablet
   scrollContent: {
-    padding: 20,
+    width: "100%",
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: "center",
+    padding: 24,
     paddingBottom: 40,
   },
 
   // FLOATING ARROW BACK (fixed, tidak ikut scroll, aman di semua device)
-  floatingBackBtn: {
+  floatingBackWrap: {
     position: "absolute",
     top: Platform.OS === "ios" ? 54 : 20,
-    left: 20,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    zIndex: 50,
+  },
+  floatingBackInner: {
+    width: "100%",
+    maxWidth: MAX_CONTENT_WIDTH,
+    paddingHorizontal: 24,
+    alignItems: "flex-start",
+  },
+  floatingBackBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(24, 24, 27, 0.85)",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#27272a",
+    borderColor: "#e4e4e7",
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 50,
-    elevation: 6, // shadow Android
+    elevation: 2, // shadow Android
     shadowColor: "#000", // shadow iOS
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.08,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
   },
   topSpacer: {
-    height: 44, // ruang kosong biar konten tidak tertutup floating back button
+    height: 32, // ruang kosong biar konten tidak tertutup floating back button
   },
 
   logoRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 20,
+    justifyContent: "center",
+    gap: 8,
+    marginBottom: 24,
   },
   logoIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "#dc2626",
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "#18181b",
     justifyContent: "center",
     alignItems: "center",
   },
   logoText: {
-    color: "#FFFFFF",
-    fontWeight: "900",
-    fontSize: 20,
-    letterSpacing: 1,
+    color: "#18181b",
+    fontWeight: "800",
+    fontSize: 15,
+    letterSpacing: 1.5,
+  },
+  verifyCircle: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: "#f4f4f5",
+    borderWidth: 1,
+    borderColor: "#e4e4e7",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 22,
   },
   heroTitle: {
-    color: "#FFFFFF",
-    fontSize: 26,
+    color: "#3f3f46",
+    fontSize: 30,
     fontWeight: "900",
-    lineHeight: 32,
+    textAlign: "center",
     marginBottom: 10,
   },
   heroSubtitle: {
-    color: "#a1a1aa",
-    fontSize: 13,
-    lineHeight: 20,
-    marginBottom: 24,
+    color: "#71717a",
+    fontSize: 14,
+    lineHeight: 22,
+    textAlign: "center",
+    marginBottom: 28,
+    maxWidth: 340,
   },
   formCard: {
-    backgroundColor: "rgba(9, 9, 11, 0.85)",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 24,
-    padding: 22,
-    overflow: "hidden", // cegah konten anak (mis. otpBoxRow) bocor keluar kartu di web
+    backgroundColor: "transparent",
+    overflow: "hidden", // cegah konten anak (mis. otpBoxRow) bocor keluar di web
   },
   formTitle: {
-    color: "#FFFFFF",
+    color: "#18181b",
     fontSize: 22,
-    fontWeight: "900",
+    fontWeight: "800",
     marginBottom: 4,
   },
   formSubtitle: {
     color: "#a1a1aa",
     fontSize: 12,
-    marginBottom: 22,
+    textAlign: "center",
+    marginTop: 12,
   },
   inputGroup: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   inputLabel: {
-    color: "#a1a1aa",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1,
+    color: "#3f3f46",
+    fontSize: 13,
+    fontWeight: "600",
     marginBottom: 8,
   },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(24, 24, 27, 0.6)",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 12,
-    paddingHorizontal: 14,
+    backgroundColor: "#f4f4f5",
+    borderWidth: 1.5,
+    borderColor: "transparent",
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    minHeight: 54,
+  },
+  inputWrapperFocused: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#18181b",
   },
   inputIcon: {
     marginRight: 10,
   },
   input: {
     flex: 1,
-    color: "#FFFFFF",
-    fontSize: 13,
+    color: "#18181b",
+    fontSize: 14,
     paddingVertical: 14,
+    ...webNoOutline,
   },
   otpBoxRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 10,
+    gap: 12,
     minWidth: 0, // penting di web: cegah row melebar melebihi induknya
   },
   otpBox: {
     flex: 1,
     minWidth: 0, // penting di web: flex:1 pada <input> butuh ini agar bisa menyusut
-    height: 56,
-    backgroundColor: "rgba(24, 24, 27, 0.6)",
+    height: 60,
+    backgroundColor: "#f4f4f5",
     borderWidth: 1.5,
-    borderColor: "#27272a",
-    borderRadius: 12,
-    color: "#FFFFFF",
+    borderColor: "transparent",
+    borderRadius: 16,
+    color: "#18181b",
     fontSize: 22,
-    fontWeight: "900",
+    fontWeight: "800",
     textAlign: "center",
+    ...webNoOutline,
   },
   otpBoxFilled: {
-    borderColor: "#dc2626",
-    backgroundColor: "rgba(220, 38, 38, 0.08)",
+    backgroundColor: "#FFFFFF",
+    borderColor: "#d4d4d8",
+  },
+  otpBoxFocused: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#18181b",
   },
   submitBtn: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#dc2626",
-    paddingVertical: 15,
-    borderRadius: 12,
+    backgroundColor: "#18181b",
+    height: 54,
+    borderRadius: 999,
     marginTop: 6,
   },
   submitBtnDisabled: {
-    backgroundColor: "#27272a",
+    backgroundColor: "#a1a1aa",
   },
   submitBtnText: {
     color: "#FFFFFF",
-    fontWeight: "bold",
-    fontSize: 14,
+    fontWeight: "600",
+    fontSize: 15,
   },
   footerText: {
-    color: "#52525b",
+    color: "#a1a1aa",
     fontSize: 10,
     textAlign: "center",
     marginTop: 24,

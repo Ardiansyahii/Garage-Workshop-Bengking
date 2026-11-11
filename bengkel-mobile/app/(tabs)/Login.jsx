@@ -23,6 +23,8 @@ import {
   Lock,
   ArrowLeft,
   ArrowRight,
+  Eye,
+  EyeOff,
 } from "lucide-react-native";
 
 const { width } = Dimensions.get("window");
@@ -58,6 +60,9 @@ export default function LoginScreen() {
     password: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+  // State tambahan khusus UI (tidak memengaruhi logika login)
+  const [showPassword, setShowPassword] = useState(false);
+  const [focusedField, setFocusedField] = useState(null);
 
   const handleChange = (name, value) => {
     setFormData({ ...formData, [name]: value });
@@ -125,19 +130,21 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.scrollContent}
       >
         {/* HEADER / BACK BUTTON */}
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backBtn}
+            activeOpacity={0.7}
             onPress={() => router.back()}
           >
-            <ArrowLeft size={14} color="#a1a1aa" />
+            <ArrowLeft size={14} color="#52525b" />
             <Text style={styles.backBtnText}>Kembali ke Beranda</Text>
           </TouchableOpacity>
         </View>
@@ -146,60 +153,85 @@ export default function LoginScreen() {
         <View style={styles.infoSection}>
           <View style={styles.brandRow}>
             <View style={styles.brandIcon}>
-              <Wrench size={22} color="#FFFFFF" />
+              <Wrench size={26} color="#FFFFFF" />
             </View>
-            <Text style={styles.brandText}>
-              BENGKEL<Text style={{ color: "#dc2626" }}>KU</Text>
-            </Text>
+            <Text style={styles.brandText}>BENGKELKU</Text>
           </View>
 
-          <Text style={styles.heroTitle}>
-            Kendali Penuh{"\n"}Di Tangan{" "}
-            <Text style={{ color: "#ef4444" }}>Anda.</Text>
-          </Text>
+          <Text style={styles.heroTitle}>Welcome Back!</Text>
 
           <Text style={styles.heroSubtitle}>
-            Portal akses eksklusif bagi administrator dan pengguna untuk
-            mengelola operasional harian.
+            Masuk untuk mengelola servis kendaraan dan operasional bengkel
+            Anda dengan mudah.
           </Text>
         </View>
 
         {/* FORM LOGIN */}
         <View style={styles.formCard}>
-          <Text style={styles.formTitle}>Login Portal</Text>
-          <Text style={styles.formSubtitle}>
-            Masukkan kredensial WhatsApp dan password Anda.
-          </Text>
-
           {/* INPUT WHATSAPP */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>NOMOR WHATSAPP</Text>
-            <View style={styles.inputWrapper}>
-              <Phone size={16} color="#71717a" style={styles.inputIcon} />
+            <Text style={styles.inputLabel}>Nomor WhatsApp</Text>
+            <View
+              style={[
+                styles.inputWrapper,
+                focusedField === "whatsapp" && styles.inputWrapperFocused,
+              ]}
+            >
+              <Phone
+                size={18}
+                color={focusedField === "whatsapp" ? "#18181b" : "#a1a1aa"}
+                style={styles.inputIcon}
+              />
               <TextInput
                 style={styles.textInput}
                 placeholder="Cth: 081234567890"
-                placeholderTextColor="#52525b"
+                placeholderTextColor="#a1a1aa"
                 keyboardType="phone-pad"
                 value={formData.whatsapp}
                 onChangeText={(val) => handleChange("whatsapp", val)}
+                onFocus={() => setFocusedField("whatsapp")}
+                onBlur={() => setFocusedField(null)}
               />
             </View>
           </View>
 
           {/* INPUT PASSWORD */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>PASSWORD</Text>
-            <View style={styles.inputWrapper}>
-              <Lock size={16} color="#71717a" style={styles.inputIcon} />
+            <Text style={styles.inputLabel}>Password</Text>
+            <View
+              style={[
+                styles.inputWrapper,
+                focusedField === "password" && styles.inputWrapperFocused,
+              ]}
+            >
+              <Lock
+                size={18}
+                color={focusedField === "password" ? "#18181b" : "#a1a1aa"}
+                style={styles.inputIcon}
+              />
               <TextInput
                 style={styles.textInput}
-                placeholder="••••••••"
-                placeholderTextColor="#52525b"
-                secureTextEntry
+                placeholder="Masukkan password"
+                placeholderTextColor="#a1a1aa"
+                secureTextEntry={!showPassword}
                 value={formData.password}
                 onChangeText={(val) => handleChange("password", val)}
+                onFocus={() => setFocusedField("password")}
+                onBlur={() => setFocusedField(null)}
               />
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityLabel={
+                  showPassword ? "Sembunyikan password" : "Tampilkan password"
+                }
+              >
+                {showPassword ? (
+                  <EyeOff size={18} color="#71717a" />
+                ) : (
+                  <Eye size={18} color="#71717a" />
+                )}
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -215,6 +247,7 @@ export default function LoginScreen() {
           {/* BUTTON SUBMIT */}
           <TouchableOpacity
             style={[styles.submitBtn, isLoading && styles.disabledBtn]}
+            activeOpacity={0.85}
             onPress={handleLogin}
             disabled={isLoading}
           >
@@ -225,7 +258,7 @@ export default function LoginScreen() {
               </View>
             ) : (
               <View style={styles.loadingRow}>
-                <Text style={styles.submitBtnText}>Akses Sistem</Text>
+                <Text style={styles.submitBtnText}>Login</Text>
                 <ArrowRight size={16} color="#FFFFFF" />
               </View>
             )}
@@ -242,6 +275,7 @@ export default function LoginScreen() {
           <View style={styles.socialRow}>
             <TouchableOpacity
               style={styles.socialButton}
+              activeOpacity={0.7}
               onPress={() => handleSocialLogin("Google")}
             >
               <Image
@@ -253,6 +287,7 @@ export default function LoginScreen() {
 
             <TouchableOpacity
               style={styles.socialButton}
+              activeOpacity={0.7}
               onPress={() => handleSocialLogin("Facebook")}
             >
               <Text style={[styles.socialIconLetter, { color: "#1877F2" }]}>
@@ -271,7 +306,7 @@ export default function LoginScreen() {
           >
             <Text style={styles.linkText}>
               Belum punya akun?{" "}
-              <Text style={styles.highlightText}>Register di sini</Text>
+              <Text style={styles.highlightText}>Sign Up</Text>
             </Text>
           </TouchableOpacity>
         </View>
@@ -288,10 +323,14 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#FFFFFF",
   },
+  // Konten dibatasi lebarnya supaya tetap rapi di web / tablet
   scrollContent: {
-    paddingHorizontal: 20,
+    width: "100%",
+    maxWidth: 420,
+    alignSelf: "center",
+    paddingHorizontal: 24,
     paddingBottom: 40,
     flexGrow: 1,
   },
@@ -301,71 +340,70 @@ const styles = StyleSheet.create({
   backBtn: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(24, 24, 27, 0.6)",
-    borderColor: "#27272a",
+    backgroundColor: "#fff",
+    borderColor: "#e4e4e7",
     borderWidth: 1,
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingVertical: 9,
+    borderRadius: 999,
     alignSelf: "flex-start",
     gap: 6,
   },
   backBtnText: {
-    color: "#a1a1aa",
+    color: "#52525b",
     fontSize: 12,
     fontWeight: "600",
   },
   infoSection: {
-    marginVertical: 12,
+    alignItems: "center",
+    marginTop: 12,
+    marginBottom: 28,
   },
   brandRow: {
-    flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    marginBottom: 16,
+    marginBottom: 24,
   },
   brandIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "#dc2626",
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: "#18181b",
     justifyContent: "center",
     alignItems: "center",
   },
   brandText: {
-    color: "#FFFFFF",
-    fontSize: 20,
-    fontWeight: "900",
-    letterSpacing: 1,
+    color: "#18181b",
+    fontSize: 16,
+    fontWeight: "800",
+    letterSpacing: 1.5,
   },
   heroTitle: {
-    color: "#FFFFFF",
-    fontSize: 28,
+    color: "#3f3f46",
+    fontSize: width < 380 ? 30 : 34,
     fontWeight: "900",
-    lineHeight: 34,
-    marginBottom: 8,
+    textAlign: "center",
+    marginBottom: 10,
   },
   heroSubtitle: {
-    color: "#a1a1aa",
-    fontSize: 13,
-    lineHeight: 18,
+    color: "#71717a",
+    fontSize: 14,
+    lineHeight: 22,
+    textAlign: "center",
+    maxWidth: 320,
   },
   formCard: {
-    backgroundColor: "rgba(9, 9, 11, 0.9)",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 24,
-    padding: 20,
-    marginVertical: 10,
+    backgroundColor: "transparent",
+    marginVertical: 4,
   },
   formTitle: {
-    color: "#FFFFFF",
+    color: "#18181b",
     fontSize: 22,
-    fontWeight: "900",
+    fontWeight: "800",
     marginBottom: 4,
   },
   formSubtitle: {
-    color: "#a1a1aa",
+    color: "#71717a",
     fontSize: 12,
     marginBottom: 20,
   },
@@ -373,55 +411,60 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   inputLabel: {
-    color: "#a1a1aa",
-    fontSize: 10,
-    fontWeight: "bold",
-    letterSpacing: 1,
-    marginBottom: 6,
+    color: "#3f3f46",
+    fontSize: 13,
+    fontWeight: "600",
+    marginBottom: 8,
   },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#18181b",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 12,
-    paddingHorizontal: 12,
+    backgroundColor: "#f4f4f5",
+    borderWidth: 1.5,
+    borderColor: "transparent",
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    minHeight: 54,
+  },
+  inputWrapperFocused: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#18181b",
   },
   inputIcon: {
-    marginRight: 8,
+    marginRight: 10,
   },
   textInput: {
     flex: 1,
-    color: "#FFFFFF",
-    fontSize: 13,
-    paddingVertical: 12,
+    color: "#18181b",
+    fontSize: 14,
+    paddingVertical: 14,
+    // Hilangkan outline default browser saat di web
+    ...Platform.select({ web: { outlineStyle: "none" }, default: {} }),
   },
   forgotPasswordLink: {
     alignSelf: "flex-end",
-    marginTop: -8,
-    marginBottom: 18,
+    marginTop: -4,
+    marginBottom: 22,
   },
   forgotPasswordText: {
-    color: "#ef4444",
+    color: "#3f3f46",
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   submitBtn: {
-    backgroundColor: "#dc2626",
-    paddingVertical: 14,
-    borderRadius: 12,
+    backgroundColor: "#18181b",
+    height: 54,
+    borderRadius: 999,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 8,
   },
   disabledBtn: {
-    backgroundColor: "#27272a",
+    backgroundColor: "#a1a1aa",
   },
   submitBtnText: {
     color: "#FFFFFF",
-    fontWeight: "bold",
-    fontSize: 14,
+    fontWeight: "600",
+    fontSize: 15,
   },
   loadingRow: {
     flexDirection: "row",
@@ -434,14 +477,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     width: "100%",
-    marginTop: 20,
-    marginBottom: 14,
+    marginTop: 24,
+    marginBottom: 16,
     gap: 10,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "rgba(82,82,91,0.6)",
+    backgroundColor: "#e4e4e7",
   },
   dividerText: {
     color: "#a1a1aa",
@@ -462,8 +505,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     backgroundColor: "#fff",
-    paddingVertical: 14,
-    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e4e4e7",
+    height: 48,
+    borderRadius: 999,
   },
   socialIcon: {
     width: 16,
@@ -476,28 +521,29 @@ const styles = StyleSheet.create({
   socialButtonText: {
     color: "#18181b",
     fontSize: 12,
-    fontWeight: "800",
+    fontWeight: "600",
   },
 
   divider: {
     height: 1,
-    backgroundColor: "#27272a",
-    marginVertical: 16,
+    backgroundColor: "#f4f4f5",
+    marginVertical: 22,
   },
   linkContainer: {
     alignItems: "center",
   },
   linkText: {
-    color: "#a1a1aa",
-    fontSize: 11,
+    color: "#71717a",
+    fontSize: 13,
     textAlign: "center",
   },
   highlightText: {
-    color: "#ef4444",
-    fontWeight: "bold",
+    color: "#18181b",
+    fontWeight: "700",
+    textDecorationLine: "underline",
   },
   copyrightText: {
-    color: "#52525b",
+    color: "#a1a1aa",
     fontSize: 10,
     textAlign: "center",
     marginTop: 20,

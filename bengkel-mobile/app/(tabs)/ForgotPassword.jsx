@@ -62,6 +62,8 @@ export default function ForgotPasswordScreen() {
   const [isResending, setIsResending] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
+  // State tambahan khusus UI (efek fokus pada input)
+  const [focusedField, setFocusedField] = useState(null);
 
   // ---------------------------------------------------------------
   // STEP 1: minta OTP dikirim ke WhatsApp
@@ -192,20 +194,25 @@ export default function ForgotPasswordScreen() {
 
   const stepSubtitle = otpSent
     ? "Masukkan 4 digit kode OTP yang dikirim ke WhatsApp Anda."
-    : "Masukkan nomor WhatsApp yang terdaftar, kami akan mengirimkan kode OTP untuk reset password.";
+    : "Jangan khawatir! Masukkan nomor WhatsApp yang terdaftar. Kami akan mengirimkan kode OTP untuk membantu Anda mengatur ulang kata sandi.";
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.scrollContent}
       >
         {/* HEADER / BACK BUTTON */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
-            <ArrowLeft size={14} color="#a1a1aa" />
+          <TouchableOpacity
+            style={styles.backBtn}
+            activeOpacity={0.7}
+            onPress={handleBack}
+          >
+            <ArrowLeft size={14} color="#52525b" />
             <Text style={styles.backBtnText}>Kembali ke Login</Text>
           </TouchableOpacity>
         </View>
@@ -214,40 +221,49 @@ export default function ForgotPasswordScreen() {
         <View style={styles.infoSection}>
           <View style={styles.brandRow}>
             <View style={styles.brandIcon}>
-              <Wrench size={22} color="#FFFFFF" />
+              <Wrench size={16} color="#FFFFFF" />
             </View>
-            <Text style={styles.brandText}>
-              BENGKEL<Text style={{ color: "#dc2626" }}>KU</Text>
-            </Text>
+            <Text style={styles.brandText}>BENGKELKU</Text>
           </View>
 
-          <Text style={styles.heroTitle}>
-            Lupa{"\n"}Kata <Text style={{ color: "#ef4444" }}>Sandi?</Text>
-          </Text>
+          {/* Ikon ilustrasi gembok */}
+          <View style={styles.lockCircle}>
+            <Lock size={34} color="#18181b" />
+          </View>
+
+          <Text style={styles.heroTitle}>Lupa Kata Sandi?</Text>
 
           <Text style={styles.heroSubtitle}>{stepSubtitle}</Text>
         </View>
 
-        {/* FORM CARD — nomor WhatsApp + kode OTP di halaman yang sama */}
+        {/* FORM — nomor WhatsApp + kode OTP di halaman yang sama */}
         <View style={styles.formCard}>
-          <Text style={styles.formTitle}>Verifikasi Nomor</Text>
-          <Text style={styles.formSubtitle}>
-            Kode OTP akan dikirim via WhatsApp ke nomor ini.
-          </Text>
-
           {/* NOMOR WHATSAPP */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>NOMOR WHATSAPP</Text>
-            <View style={[styles.inputWrapper, errors.whatsapp ? styles.inputWrapperError : null]}>
-              <Phone size={16} color="#71717a" style={styles.inputIcon} />
+            <Text style={styles.inputLabel}>Nomor WhatsApp</Text>
+            <View
+              style={[
+                styles.inputWrapper,
+                focusedField === "whatsapp" && styles.inputWrapperFocused,
+                errors.whatsapp ? styles.inputWrapperError : null,
+                otpSent && styles.inputWrapperLocked,
+              ]}
+            >
+              <Phone
+                size={18}
+                color={focusedField === "whatsapp" ? "#18181b" : "#a1a1aa"}
+                style={styles.inputIcon}
+              />
               <TextInput
                 style={styles.textInput}
                 placeholder="Cth: 081234567890"
-                placeholderTextColor="#52525b"
+                placeholderTextColor="#a1a1aa"
                 keyboardType="phone-pad"
                 value={whatsapp}
                 onChangeText={setWhatsapp}
                 editable={!otpSent}
+                onFocus={() => setFocusedField("whatsapp")}
+                onBlur={() => setFocusedField(null)}
               />
               {otpSent ? (
                 <TouchableOpacity onPress={handleChangeNumber} hitSlop={8}>
@@ -261,6 +277,7 @@ export default function ForgotPasswordScreen() {
           {!otpSent ? (
             <TouchableOpacity
               style={[styles.submitBtn, isSendingOtp && styles.disabledBtn]}
+              activeOpacity={0.85}
               onPress={handleRequestOtp}
               disabled={isSendingOtp}
             >
@@ -280,12 +297,12 @@ export default function ForgotPasswordScreen() {
             <>
               {/* KODE OTP — muncul di bawah nomor WhatsApp setelah OTP terkirim */}
               <View style={styles.stepBadge}>
-                <ShieldCheck size={13} color="#ef4444" />
+                <ShieldCheck size={14} color="#18181b" />
                 <Text style={styles.stepBadgeText}>OTP dikirim ke {whatsapp}</Text>
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>KODE OTP</Text>
+                <Text style={[styles.inputLabel, { textAlign: "center" }]}>Kode OTP</Text>
                 <OtpBoxInput value={otp} onChange={setOtp} error={!!errors.otp} disabled={isSubmitting} />
                 {errors.otp ? <Text style={[styles.errorText, { textAlign: "center" }]}>{errors.otp}</Text> : null}
 
@@ -295,14 +312,21 @@ export default function ForgotPasswordScreen() {
                   style={styles.resendRow}
                 >
                   {isResending ? (
-                    <ActivityIndicator size="small" color="#ef4444" />
+                    <ActivityIndicator size="small" color="#18181b" />
                   ) : (
-                    <Text style={styles.resendText}>Tidak menerima kode? Kirim Ulang</Text>
+                    <Text style={styles.resendText}>
+                      Tidak menerima kode?{" "}
+                      <Text style={styles.resendHighlight}>Kirim Ulang</Text>
+                    </Text>
                   )}
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity style={styles.submitBtn} onPress={handleVerifyOtpStep}>
+              <TouchableOpacity
+                style={styles.submitBtn}
+                activeOpacity={0.85}
+                onPress={handleVerifyOtpStep}
+              >
                 <View style={styles.loadingRow}>
                   <Text style={styles.submitBtnText}>Verifikasi</Text>
                   <ArrowRight size={16} color="#FFFFFF" />
@@ -340,12 +364,12 @@ export default function ForgotPasswordScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeaderRow}>
-              <View style={styles.stepBadge}>
-                <ShieldCheck size={13} color="#ef4444" />
+              <View style={[styles.stepBadge, { marginBottom: 0 }]}>
+                <ShieldCheck size={14} color="#18181b" />
                 <Text style={styles.stepBadgeText}>OTP terverifikasi</Text>
               </View>
               <TouchableOpacity onPress={handleClosePasswordModal} hitSlop={8}>
-                <X size={20} color="#a1a1aa" />
+                <X size={20} color="#71717a" />
               </TouchableOpacity>
             </View>
 
@@ -353,22 +377,34 @@ export default function ForgotPasswordScreen() {
             <Text style={styles.formSubtitle}>Masukkan password baru Anda.</Text>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>PASSWORD BARU</Text>
-              <View style={[styles.inputWrapper, errors.password ? styles.inputWrapperError : null]}>
-                <Lock size={16} color="#71717a" style={styles.inputIcon} />
+              <Text style={styles.inputLabel}>Password baru</Text>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  focusedField === "password" && styles.inputWrapperFocused,
+                  errors.password ? styles.inputWrapperError : null,
+                ]}
+              >
+                <Lock
+                  size={18}
+                  color={focusedField === "password" ? "#18181b" : "#a1a1aa"}
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   style={styles.textInput}
                   placeholder="Minimal 8 karakter"
-                  placeholderTextColor="#52525b"
+                  placeholderTextColor="#a1a1aa"
                   secureTextEntry={!showPassword}
                   value={password}
                   onChangeText={setPassword}
+                  onFocus={() => setFocusedField("password")}
+                  onBlur={() => setFocusedField(null)}
                 />
                 <TouchableOpacity onPress={() => setShowPassword((v) => !v)} hitSlop={8}>
                   {showPassword ? (
-                    <EyeOff size={16} color="#71717a" />
+                    <EyeOff size={18} color="#71717a" />
                   ) : (
-                    <Eye size={16} color="#71717a" />
+                    <Eye size={18} color="#71717a" />
                   )}
                 </TouchableOpacity>
               </View>
@@ -376,22 +412,34 @@ export default function ForgotPasswordScreen() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>KONFIRMASI PASSWORD</Text>
-              <View style={[styles.inputWrapper, errors.confirmPassword ? styles.inputWrapperError : null]}>
-                <Lock size={16} color="#71717a" style={styles.inputIcon} />
+              <Text style={styles.inputLabel}>Konfirmasi password</Text>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  focusedField === "confirmPassword" && styles.inputWrapperFocused,
+                  errors.confirmPassword ? styles.inputWrapperError : null,
+                ]}
+              >
+                <Lock
+                  size={18}
+                  color={focusedField === "confirmPassword" ? "#18181b" : "#a1a1aa"}
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   style={styles.textInput}
                   placeholder="Ulangi password baru"
-                  placeholderTextColor="#52525b"
+                  placeholderTextColor="#a1a1aa"
                   secureTextEntry={!showConfirmPassword}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
+                  onFocus={() => setFocusedField("confirmPassword")}
+                  onBlur={() => setFocusedField(null)}
                 />
                 <TouchableOpacity onPress={() => setShowConfirmPassword((v) => !v)} hitSlop={8}>
                   {showConfirmPassword ? (
-                    <EyeOff size={16} color="#71717a" />
+                    <EyeOff size={18} color="#71717a" />
                   ) : (
-                    <Eye size={16} color="#71717a" />
+                    <Eye size={18} color="#71717a" />
                   )}
                 </TouchableOpacity>
               </View>
@@ -401,6 +449,7 @@ export default function ForgotPasswordScreen() {
             <View style={styles.modalActionsRow}>
               <TouchableOpacity
                 style={[styles.modalCancelBtn]}
+                activeOpacity={0.7}
                 onPress={handleClosePasswordModal}
                 disabled={isSubmitting}
               >
@@ -409,6 +458,7 @@ export default function ForgotPasswordScreen() {
 
               <TouchableOpacity
                 style={[styles.modalConfirmBtn, isSubmitting && styles.disabledBtn]}
+                activeOpacity={0.85}
                 onPress={handleResetPassword}
                 disabled={isSubmitting}
               >
@@ -488,9 +538,9 @@ const OtpBoxInput = ({ value, onChange, error, disabled }) => {
           }}
           style={[
             styles.otpBox,
-            error ? styles.otpBoxError : null,
             digit ? styles.otpBoxFilled : null,
             focusedIndex === i ? styles.otpBoxFocused : null,
+            error ? styles.otpBoxError : null,
           ]}
           value={digit}
           onChangeText={(t) => handleChangeDigit(t, i)}
@@ -508,13 +558,22 @@ const OtpBoxInput = ({ value, onChange, error, disabled }) => {
   );
 };
 
+const webNoOutline = Platform.select({
+  web: { outlineStyle: "none" },
+  default: {},
+});
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#FFFFFF",
   },
+  // Konten dibatasi lebarnya supaya tetap rapi di web / tablet
   scrollContent: {
-    paddingHorizontal: 20,
+    width: "100%",
+    maxWidth: 420,
+    alignSelf: "center",
+    paddingHorizontal: 24,
     paddingBottom: 40,
     flexGrow: 1,
   },
@@ -524,72 +583,83 @@ const styles = StyleSheet.create({
   backBtn: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(24, 24, 27, 0.6)",
-    borderColor: "#27272a",
+    backgroundColor: "#fff",
+    borderColor: "#e4e4e7",
     borderWidth: 1,
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingVertical: 9,
+    borderRadius: 999,
     alignSelf: "flex-start",
     gap: 6,
   },
   backBtnText: {
-    color: "#a1a1aa",
+    color: "#52525b",
     fontSize: 12,
     fontWeight: "600",
   },
   infoSection: {
-    marginVertical: 12,
+    alignItems: "center",
+    marginTop: 8,
+    marginBottom: 28,
   },
   brandRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 16,
+    gap: 8,
+    marginBottom: 24,
   },
   brandIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "#dc2626",
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "#18181b",
     justifyContent: "center",
     alignItems: "center",
   },
   brandText: {
-    color: "#FFFFFF",
-    fontSize: 20,
-    fontWeight: "900",
-    letterSpacing: 1,
+    color: "#18181b",
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: 1.5,
+  },
+  lockCircle: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: "#f4f4f5",
+    borderWidth: 1,
+    borderColor: "#e4e4e7",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 22,
   },
   heroTitle: {
-    color: "#FFFFFF",
-    fontSize: 28,
+    color: "#3f3f46",
+    fontSize: 32,
     fontWeight: "900",
-    lineHeight: 34,
-    marginBottom: 8,
+    textAlign: "center",
+    marginBottom: 10,
   },
   heroSubtitle: {
-    color: "#a1a1aa",
-    fontSize: 13,
-    lineHeight: 18,
+    color: "#71717a",
+    fontSize: 14,
+    lineHeight: 22,
+    textAlign: "center",
+    maxWidth: 340,
   },
   formCard: {
-    backgroundColor: "rgba(9, 9, 11, 0.9)",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 24,
-    padding: 20,
-    marginVertical: 10,
+    backgroundColor: "transparent",
+    marginVertical: 4,
   },
   formTitle: {
-    color: "#FFFFFF",
+    color: "#18181b",
     fontSize: 22,
-    fontWeight: "900",
+    fontWeight: "800",
     marginBottom: 4,
   },
   formSubtitle: {
-    color: "#a1a1aa",
-    fontSize: 12,
+    color: "#71717a",
+    fontSize: 13,
     marginBottom: 20,
   },
 
@@ -597,65 +667,75 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(220,38,38,0.14)",
+    alignSelf: "center",
+    backgroundColor: "#f4f4f5",
     borderWidth: 1,
-    borderColor: "rgba(239,68,68,0.3)",
-    borderRadius: 20,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    marginBottom: 14,
+    borderColor: "#e4e4e7",
+    borderRadius: 999,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    marginBottom: 18,
   },
   stepBadgeText: {
-    color: "#ef4444",
-    fontSize: 11.5,
-    fontWeight: "700",
+    color: "#18181b",
+    fontSize: 12,
+    fontWeight: "600",
   },
 
   inputGroup: {
     marginBottom: 16,
   },
   inputLabel: {
-    color: "#a1a1aa",
-    fontSize: 10,
-    fontWeight: "bold",
-    letterSpacing: 1,
-    marginBottom: 6,
+    color: "#3f3f46",
+    fontSize: 13,
+    fontWeight: "600",
+    marginBottom: 8,
   },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#18181b",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 12,
-    paddingHorizontal: 12,
+    backgroundColor: "#f4f4f5",
+    borderWidth: 1.5,
+    borderColor: "transparent",
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    minHeight: 54,
     gap: 8,
   },
+  inputWrapperFocused: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#18181b",
+  },
+  inputWrapperLocked: {
+    opacity: 0.75,
+  },
   inputWrapperError: {
-    borderColor: "#ef4444",
+    backgroundColor: "#fef2f2",
+    borderColor: "#dc2626",
   },
   inputIcon: {
-    marginRight: 8,
+    marginRight: 2,
   },
   changeNumberText: {
-    color: "#ef4444",
-    fontSize: 11,
+    color: "#18181b",
+    fontSize: 12,
     fontWeight: "700",
+    textDecorationLine: "underline",
   },
   textInput: {
     flex: 1,
-    color: "#FFFFFF",
-    fontSize: 13,
-    paddingVertical: 12,
+    color: "#18181b",
+    fontSize: 14,
+    paddingVertical: 14,
+    ...webNoOutline,
   },
   errorText: {
-    color: "#ef4444",
-    fontSize: 11,
-    marginTop: 5,
+    color: "#dc2626",
+    fontSize: 12,
+    marginTop: 6,
   },
 
-  // Kotak-kotak OTP (terpisah per digit, sesuai desain modal referensi)
+  // Kotak-kotak OTP (terpisah per digit)
   otpBoxRow: {
     flexDirection: "row",
     justifyContent: "center",
@@ -664,53 +744,59 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   otpBox: {
-    width: 52,
-    height: 56,
-    borderRadius: 12,
+    width: 56,
+    height: 60,
+    borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: "#27272a",
-    backgroundColor: "#18181b",
-    color: "#FFFFFF",
-    fontSize: 20,
+    borderColor: "transparent",
+    backgroundColor: "#f4f4f5",
+    color: "#18181b",
+    fontSize: 22,
     fontWeight: "700",
+    ...webNoOutline,
   },
   otpBoxFilled: {
-    borderColor: "#ef4444",
+    borderColor: "#d4d4d8",
   },
   otpBoxFocused: {
-    borderColor: "#FFFFFF",
+    backgroundColor: "#FFFFFF",
+    borderColor: "#18181b",
   },
   otpBoxError: {
-    borderColor: "#ef4444",
-    backgroundColor: "rgba(220,38,38,0.14)",
+    borderColor: "#dc2626",
+    backgroundColor: "#fef2f2",
   },
 
   resendRow: {
     alignItems: "center",
-    marginTop: 12,
+    marginTop: 14,
     paddingVertical: 4,
   },
   resendText: {
-    color: "#ef4444",
-    fontSize: 12,
-    fontWeight: "600",
+    color: "#71717a",
+    fontSize: 13,
+  },
+  resendHighlight: {
+    color: "#18181b",
+    fontWeight: "700",
+    textDecorationLine: "underline",
   },
 
   submitBtn: {
-    backgroundColor: "#dc2626",
-    paddingVertical: 14,
-    borderRadius: 12,
+    backgroundColor: "#18181b",
+    height: 54,
+    borderRadius: 999,
     justifyContent: "center",
     alignItems: "center",
     marginTop: 8,
   },
   disabledBtn: {
-    backgroundColor: "#27272a",
+    backgroundColor: "#a1a1aa",
   },
   submitBtnText: {
     color: "#FFFFFF",
-    fontWeight: "bold",
-    fontSize: 14,
+    fontWeight: "600",
+    fontSize: 15,
   },
   loadingRow: {
     flexDirection: "row",
@@ -720,23 +806,24 @@ const styles = StyleSheet.create({
 
   divider: {
     height: 1,
-    backgroundColor: "#27272a",
-    marginVertical: 16,
+    backgroundColor: "#f4f4f5",
+    marginVertical: 22,
   },
   linkContainer: {
     alignItems: "center",
   },
   linkText: {
-    color: "#a1a1aa",
-    fontSize: 11,
+    color: "#71717a",
+    fontSize: 13,
     textAlign: "center",
   },
   highlightText: {
-    color: "#ef4444",
-    fontWeight: "bold",
+    color: "#18181b",
+    fontWeight: "700",
+    textDecorationLine: "underline",
   },
   copyrightText: {
-    color: "#52525b",
+    color: "#a1a1aa",
     fontSize: 10,
     textAlign: "center",
     marginTop: 20,
@@ -745,7 +832,7 @@ const styles = StyleSheet.create({
   // MODAL — Buat Password Baru
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.75)",
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 20,
@@ -753,17 +840,15 @@ const styles = StyleSheet.create({
   modalCard: {
     width: "100%",
     maxWidth: 420,
-    backgroundColor: "#09090b",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 24,
-    padding: 20,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 28,
+    padding: 24,
   },
   modalHeaderRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 8,
+    marginBottom: 16,
   },
   modalActionsRow: {
     flexDirection: "row",
@@ -772,24 +857,24 @@ const styles = StyleSheet.create({
   },
   modalCancelBtn: {
     flex: 1,
-    backgroundColor: "#18181b",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#27272a",
-    paddingVertical: 14,
-    borderRadius: 12,
+    borderColor: "#d4d4d8",
+    height: 52,
+    borderRadius: 999,
     justifyContent: "center",
     alignItems: "center",
   },
   modalCancelBtnText: {
-    color: "#FFFFFF",
-    fontWeight: "bold",
+    color: "#18181b",
+    fontWeight: "600",
     fontSize: 14,
   },
   modalConfirmBtn: {
     flex: 1,
-    backgroundColor: "#dc2626",
-    paddingVertical: 14,
-    borderRadius: 12,
+    backgroundColor: "#18181b",
+    height: 52,
+    borderRadius: 999,
     justifyContent: "center",
     alignItems: "center",
   },
