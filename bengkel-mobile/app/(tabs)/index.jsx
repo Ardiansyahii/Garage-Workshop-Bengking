@@ -12,6 +12,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   Wrench,
@@ -31,7 +32,11 @@ import {
 // (misal pakai react-native-dotenv / expo-constants).
 const API_URL = "http://10.60.194.60:5000";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+// Tinggi hero & tinggi lengkungan putih di bagian bawah hero
+// (dibatasi agar tidak terlalu tinggi saat dibuka di browser/web)
+const HERO_HEIGHT = Math.min(520, Math.max(380, Math.round(SCREEN_HEIGHT * 0.52)));
 
 // Ganti dengan path gambar lokal kamu, contoh:
 // const workshopBg = require("../assets/workshop-bg.png");
@@ -40,8 +45,13 @@ const WORKSHOP_BG = require("../../assets/workshop-bg.png");
 
 export default function LandingScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [bengkels, setBengkels] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  // Lebar hero yang sebenarnya (bukan lebar window), supaya lengkungan
+  // tetap benar di web / layar dengan container lebih sempit dari window.
+  const [heroWidth, setHeroWidth] = useState(SCREEN_WIDTH);
+  const curveHeight = Math.min(90, Math.round(heroWidth * 0.17));
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -112,7 +122,7 @@ export default function LandingScreen() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#dc2626" />
+        <ActivityIndicator size="large" color="#18181b" />
         <Text style={styles.loadingText}>Memuat BengkelKu...</Text>
       </View>
     );
@@ -123,30 +133,24 @@ export default function LandingScreen() {
 
   return (
     <View style={styles.container}>
-      {/* HEADER */}
-      <View style={styles.header}>
-        <View style={styles.logoRow}>
-          <View style={styles.logoBox}>
-            <Wrench size={16} color="#fff" />
-          </View>
-          <Text style={styles.logoText}>
-            BENGKEL<Text style={{ color: "#dc2626" }}>KU</Text>
-          </Text>
-        </View>
-      </View>
-
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={{ paddingBottom: 40, flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* HERO SECTION */}
-        <View style={styles.hero}>
+        {/* HERO SECTION: gambar + logo + nama aplikasi + tagline */}
+        <View
+          style={[
+            styles.hero,
+            { marginTop: insets.top + 8, paddingBottom: curveHeight },
+          ]}
+          onLayout={(e) => setHeroWidth(e.nativeEvent.layout.width)}
+        >
           <Image
-          source={WORKSHOP_BG}
-          style={StyleSheet.absoluteFill}
-          resizeMode="cover"
-        />
+            source={WORKSHOP_BG}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+          />
           <View style={styles.heroOverlay} />
 
           <Animated.View
@@ -158,78 +162,98 @@ export default function LandingScreen() {
               width: "100%",
             }}
           >
-            <View style={styles.badge}>
-              <View style={styles.badgeDot} />
-              <Text style={styles.badgeText}>
-                Platform Perawatan Otomotif Digital
-              </Text>
+            <View style={styles.logoCircle}>
+              <Wrench size={34} color="#18181b" />
             </View>
-
-            <Text style={styles.heroTitle}>
-              PRESISI TINGGI UNTUK{" "}
-              <Text style={{ color: "#dc2626" }}>KENDARAAN ANDA</Text>.
+            <Text style={styles.brandName}>BENGKELKU</Text>
+            <Text style={styles.brandTagline}>
+              Platform Perawatan Otomotif Digital
             </Text>
-
-            <Text style={styles.heroSubtitle}>
-              Booking servis kendaraan tanpa antre, bandingkan harga bengkel,
-              dan pantau progres pengerjaan secara real-time.
-            </Text>
-
-            {/* AUTH BUTTONS: Masuk & Daftar */}
-            <View style={styles.heroButtons}>
-              <TouchableOpacity
-                style={styles.primaryButton}
-                onPress={() => router.push("/Register")}
-              >
-                <Text style={styles.primaryButtonText}>Daftar</Text>
-                <ArrowRight size={16} color="#fff" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={() => router.push("/Login")}
-              >
-                <Text style={styles.secondaryButtonText}>Masuk</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* DIVIDER */}
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>atau lanjutkan dengan</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            {/* SOCIAL LOGIN (DUMMY) */}
-            <View style={styles.socialRow}>
-              <TouchableOpacity
-                style={styles.socialButton}
-                onPress={() => handleSocialLogin("Google")}
-              >
-                <Image
-                  source={{
-                    uri: "https://www.google.com/favicon.ico",
-                  }}
-                  style={styles.socialIcon}
-                />
-                <Text style={styles.socialButtonText}>Google</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.socialButton}
-                onPress={() => handleSocialLogin("Facebook")}
-              >
-                <Text style={[styles.socialIconLetter, { color: "#1877F2" }]}>
-                  f
-                </Text>
-                <Text style={styles.socialButtonText}>Facebook</Text>
-              </TouchableOpacity>
-            </View>
           </Animated.View>
+
+          {/* Lengkungan putih yang menyatu dengan area Welcome */}
+          <View
+            style={[
+              styles.heroCurve,
+              {
+                left: -heroWidth / 2,
+                top: HERO_HEIGHT - curveHeight,
+                width: heroWidth * 2,
+                height: heroWidth * 2,
+                borderRadius: heroWidth,
+              },
+            ]}
+          />
         </View>
+
+        {/* WELCOME SECTION */}
+        <Animated.View
+          style={[
+            styles.welcome,
+            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+          ]}
+        >
+          <Text style={styles.heroTitle}>WELCOME</Text>
+
+          <Text style={styles.heroSubtitle}>
+            Booking servis kendaraan tanpa antre, bandingkan harga bengkel,
+            dan pantau progres pengerjaan secara real-time.
+          </Text>
+
+          {/* AUTH BUTTONS: Login & Sign Up */}
+          <View style={styles.heroButtons}>
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => router.push("/Login")}
+            >
+              <Text style={styles.secondaryButtonText}>Login</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={() => router.push("/Register")}
+            >
+              <Text style={styles.primaryButtonText}>Sign Up</Text>
+              <ArrowRight size={16} color="#18181b" />
+            </TouchableOpacity>
+          </View>
+
+          {/* DIVIDER */}
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>atau lanjutkan dengan</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* SOCIAL LOGIN (DUMMY) */}
+          <View style={styles.socialRow}>
+            <TouchableOpacity
+              style={styles.socialButton}
+              onPress={() => handleSocialLogin("Google")}
+            >
+              <Image
+                source={{
+                  uri: "https://www.google.com/favicon.ico",
+                }}
+                style={styles.socialIcon}
+              />
+              <Text style={styles.socialButtonText}>Google</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.socialButton}
+              onPress={() => handleSocialLogin("Facebook")}
+            >
+              <Text style={[styles.socialIconLetter, { color: "#1877F2" }]}>
+                f
+              </Text>
+              <Text style={styles.socialButtonText}>Facebook</Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
 
         {/* SECTION 1: BENGKEL POPULER */}
         {bestBengkels.length > 0 && (
-          <View style={styles.section}>
+          <View style={[styles.section, styles.sectionBorderTop]}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionEyebrow}>Mitra Unggulan</Text>
               <Text style={styles.sectionTitle}>Bengkel Rekomendasi Kami</Text>
@@ -260,13 +284,13 @@ export default function LandingScreen() {
                     <Text style={styles.bengkelName}>{bengkel.name}</Text>
 
                     <View style={styles.bengkelInfoRow}>
-                      <MapPin size={14} color="#ef4444" />
+                      <MapPin size={14} color="#52525b" />
                       <Text style={styles.bengkelInfoText}>
                         {bengkel.address}
                       </Text>
                     </View>
                     <View style={styles.bengkelInfoRow}>
-                      <Phone size={14} color="#ef4444" />
+                      <Phone size={14} color="#52525b" />
                       <Text style={styles.bengkelInfoText}>
                         {bengkel.phone}
                       </Text>
@@ -281,10 +305,18 @@ export default function LandingScreen() {
                       ]}
                       onPress={handleCtaClick}
                     >
-                      <Text style={styles.bengkelButtonText}>
+                      <Text
+                        style={[
+                          styles.bengkelButtonText,
+                          !isPopular && styles.bengkelButtonTextDefault,
+                        ]}
+                      >
                         Booking di Sini
                       </Text>
-                      <ChevronRight size={14} color="#fff" />
+                      <ChevronRight
+                        size={14}
+                        color={isPopular ? "#fff" : "#18181b"}
+                      />
                     </TouchableOpacity>
                   </View>
                 );
@@ -308,13 +340,13 @@ export default function LandingScreen() {
                 <View key={bengkel.id} style={styles.otherCard}>
                   <Text style={styles.otherCardName}>{bengkel.name}</Text>
                   <View style={styles.bengkelInfoRow}>
-                    <MapPin size={13} color="#a1a1aa" />
+                    <MapPin size={13} color="#71717a" />
                     <Text style={styles.otherCardText}>
                       {bengkel.address}
                     </Text>
                   </View>
                   <View style={styles.bengkelInfoRow}>
-                    <Phone size={13} color="#a1a1aa" />
+                    <Phone size={13} color="#71717a" />
                     <Text style={styles.otherCardText}>{bengkel.phone}</Text>
                   </View>
 
@@ -325,7 +357,7 @@ export default function LandingScreen() {
                     <Text style={styles.otherCardButtonText}>
                       Pilih Bengkel Ini
                     </Text>
-                    <ChevronRight size={14} color="#d4d4d8" />
+                    <ChevronRight size={14} color="#3f3f46" />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -347,137 +379,131 @@ export default function LandingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: "#fff",
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
     gap: 16,
   },
   loadingText: {
     color: "#71717a",
-    fontWeight: "700",
+    fontWeight: "600",
     fontSize: 13,
   },
   scroll: {
     flex: 1,
   },
 
-  // HEADER
-  header: {
-    height: 64,
-    paddingHorizontal: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-start",
-    backgroundColor: "rgba(0,0,0,0.9)",
-    borderBottomWidth: 1,
-    borderBottomColor: "#18181b",
-  },
-  logoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  logoBox: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    backgroundColor: "#dc2626",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logoText: {
-    color: "#fff",
-    fontWeight: "900",
-    fontSize: 15,
-    letterSpacing: 1,
-  },
   // HERO
   hero: {
-    minHeight: 560,
+    height: HERO_HEIGHT,
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 60,
-    paddingBottom: 60,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     overflow: "hidden",
+    backgroundColor: "#27272a",
   },
   heroOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.6)",
+    backgroundColor: "rgba(0,0,0,0.35)",
   },
-  badge: {
-    flexDirection: "row",
+  // Lingkaran besar berwarna putih; hanya bagian atasnya yang terlihat
+  // sehingga membentuk lengkungan halus di bawah gambar.
+  heroCurve: {
+    position: "absolute",
+    backgroundColor: "#fff",
+  },
+  logoCircle: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: "#fff",
     alignItems: "center",
-    gap: 8,
-    backgroundColor: "rgba(24,24,27,0.8)",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 999,
-    marginBottom: 20,
+    justifyContent: "center",
+    marginBottom: 14,
   },
-  badgeDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 999,
-    backgroundColor: "#dc2626",
+  brandName: {
+    color: "#fff",
+    fontSize: 32,
+    fontWeight: "800",
+    letterSpacing: 1,
+    textShadowColor: "rgba(0,0,0,0.35)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
   },
-  badgeText: {
-    color: "#d4d4d8",
-    fontSize: 11,
+  brandTagline: {
+    color: "#fff",
+    fontSize: 14,
     fontWeight: "600",
+    marginTop: 4,
+    textAlign: "center",
+    textShadowColor: "rgba(0,0,0,0.35)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+  },
+
+  // WELCOME
+  welcome: {
+    alignItems: "center",
+    paddingHorizontal: 32,
+    paddingTop: 12,
+    paddingBottom: 36,
+    backgroundColor: "#fff",
   },
   heroTitle: {
-    color: "#fff",
-    fontSize: SCREEN_WIDTH < 380 ? 32 : 38,
+    color: "#3f3f46",
+    fontSize: SCREEN_WIDTH < 380 ? 34 : 40,
     fontWeight: "900",
     textAlign: "center",
-    lineHeight: SCREEN_WIDTH < 380 ? 38 : 44,
-    marginBottom: 16,
+    letterSpacing: 0.5,
+    marginBottom: 12,
   },
   heroSubtitle: {
-    color: "#d4d4d8",
-    fontSize: 13,
+    color: "#71717a",
+    fontSize: 14,
     textAlign: "center",
-    lineHeight: 20,
+    lineHeight: 22,
     marginBottom: 28,
-    maxWidth: 440,
+    maxWidth: 340,
   },
   heroButtons: {
     width: "100%",
+    maxWidth: 300,
     gap: 12,
   },
+  // Tombol Login (hitam, pill)
+  secondaryButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#18181b",
+    height: 52,
+    borderRadius: 999,
+  },
+  secondaryButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 15,
+  },
+  // Tombol Sign Up (putih, border abu-abu, pill)
   primaryButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#dc2626",
-    paddingVertical: 16,
-    borderRadius: 14,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#d4d4d8",
+    height: 52,
+    borderRadius: 999,
   },
   primaryButtonText: {
-    color: "#fff",
-    fontWeight: "800",
-    fontSize: 13,
-  },
-  secondaryButton: {
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(39,39,42,0.8)",
-    borderWidth: 1,
-    borderColor: "#52525b",
-    paddingVertical: 16,
-    borderRadius: 14,
-  },
-  secondaryButtonText: {
-    color: "#e4e4e7",
-    fontWeight: "800",
-    fontSize: 13,
+    color: "#18181b",
+    fontWeight: "600",
+    fontSize: 15,
   },
 
   // DIVIDER ("atau lanjutkan dengan")
@@ -485,14 +511,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     width: "100%",
-    marginTop: 24,
+    maxWidth: 300,
+    marginTop: 28,
     marginBottom: 16,
     gap: 10,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "rgba(82,82,91,0.6)",
+    backgroundColor: "#e4e4e7",
   },
   dividerText: {
     color: "#a1a1aa",
@@ -504,6 +531,7 @@ const styles = StyleSheet.create({
   socialRow: {
     flexDirection: "row",
     width: "100%",
+    maxWidth: 300,
     gap: 12,
   },
   socialButton: {
@@ -513,8 +541,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     backgroundColor: "#fff",
-    paddingVertical: 14,
-    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#e4e4e7",
+    height: 46,
+    borderRadius: 999,
   },
   socialIcon: {
     width: 16,
@@ -527,17 +557,18 @@ const styles = StyleSheet.create({
   socialButtonText: {
     color: "#18181b",
     fontSize: 12,
-    fontWeight: "800",
+    fontWeight: "600",
   },
 
   // SECTIONS
   section: {
     paddingHorizontal: 20,
     paddingVertical: 40,
+    backgroundColor: "#fff",
   },
   sectionBorderTop: {
     borderTopWidth: 1,
-    borderTopColor: "rgba(39,39,42,0.8)",
+    borderTopColor: "#f4f4f5",
   },
   sectionHeader: {
     alignItems: "center",
@@ -545,22 +576,21 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   sectionEyebrow: {
-    color: "#dc2626",
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1.5,
-    textTransform: "uppercase",
+    color: "#71717a",
+    fontSize: 12,
+    fontWeight: "600",
   },
   sectionTitle: {
-    color: "#fff",
+    color: "#18181b",
     fontSize: 22,
-    fontWeight: "900",
+    fontWeight: "800",
     textAlign: "center",
   },
   sectionSubtitle: {
-    color: "#a1a1aa",
-    fontSize: 12,
+    color: "#71717a",
+    fontSize: 13,
     textAlign: "center",
+    lineHeight: 19,
   },
 
   cardStack: {
@@ -569,16 +599,16 @@ const styles = StyleSheet.create({
 
   // BENGKEL CARD (populer)
   bengkelCard: {
-    backgroundColor: "rgba(9,9,11,0.8)",
+    backgroundColor: "#fafafa",
     borderWidth: 1,
-    borderColor: "#18181b",
-    borderRadius: 20,
+    borderColor: "#e4e4e7",
+    borderRadius: 24,
     padding: 22,
   },
   bengkelCardPopular: {
     borderWidth: 2,
-    borderColor: "#dc2626",
-    backgroundColor: "#0a0a0a",
+    borderColor: "#18181b",
+    backgroundColor: "#fff",
   },
   popularBadge: {
     position: "absolute",
@@ -587,7 +617,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#dc2626",
+    backgroundColor: "#18181b",
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 999,
@@ -595,13 +625,13 @@ const styles = StyleSheet.create({
   popularBadgeText: {
     color: "#fff",
     fontSize: 9,
-    fontWeight: "900",
+    fontWeight: "800",
     letterSpacing: 1,
   },
   bengkelName: {
-    color: "#fff",
+    color: "#18181b",
     fontSize: 18,
-    fontWeight: "900",
+    fontWeight: "800",
     marginBottom: 10,
   },
   bengkelInfoRow: {
@@ -611,7 +641,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   bengkelInfoText: {
-    color: "#a1a1aa",
+    color: "#71717a",
     fontSize: 12,
     flex: 1,
   },
@@ -621,39 +651,42 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    paddingVertical: 14,
-    borderRadius: 12,
+    height: 48,
+    borderRadius: 999,
   },
   bengkelButtonDefault: {
-    backgroundColor: "#18181b",
+    backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: "#27272a",
+    borderColor: "#d4d4d8",
   },
   bengkelButtonPopular: {
-    backgroundColor: "#dc2626",
+    backgroundColor: "#18181b",
   },
   bengkelButtonText: {
     color: "#fff",
-    fontSize: 12,
-    fontWeight: "800",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  bengkelButtonTextDefault: {
+    color: "#18181b",
   },
 
   // OTHER BENGKEL CARD
   otherCard: {
-    backgroundColor: "rgba(9,9,11,0.6)",
+    backgroundColor: "#fafafa",
     borderWidth: 1,
-    borderColor: "#18181b",
-    borderRadius: 16,
+    borderColor: "#e4e4e7",
+    borderRadius: 20,
     padding: 18,
   },
   otherCardName: {
-    color: "#fff",
+    color: "#18181b",
     fontSize: 15,
-    fontWeight: "800",
+    fontWeight: "700",
     marginBottom: 8,
   },
   otherCardText: {
-    color: "#a1a1aa",
+    color: "#71717a",
     fontSize: 12,
     flex: 1,
   },
@@ -663,29 +696,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    backgroundColor: "#18181b",
+    backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: "#27272a",
-    paddingVertical: 11,
-    borderRadius: 12,
+    borderColor: "#d4d4d8",
+    height: 44,
+    borderRadius: 999,
   },
   otherCardButtonText: {
-    color: "#d4d4d8",
+    color: "#3f3f46",
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
   },
 
   // FOOTER
   footer: {
     borderTopWidth: 1,
-    borderTopColor: "#18181b",
+    borderTopColor: "#f4f4f5",
     paddingVertical: 24,
     paddingHorizontal: 20,
     alignItems: "center",
     gap: 12,
   },
   footerCopy: {
-    color: "#71717a",
+    color: "#a1a1aa",
     fontSize: 11,
   },
 });
