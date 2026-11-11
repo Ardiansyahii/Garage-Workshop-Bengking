@@ -11,6 +11,7 @@ import {
   Modal,
   TextInput,
   Platform,
+  KeyboardAvoidingView,
 } from "react-native";
 
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -46,6 +47,8 @@ const fetchWithAuth = async (url, options = {}) => {
   const response = await fetch(`${API_URL}${url}`, { ...options, headers });
   return await response.json();
 };
+
+const MAX_CONTENT_WIDTH = 480;
 
 export default function RiwayatServisScreen() {
   const router = useRouter();
@@ -201,29 +204,38 @@ export default function RiwayatServisScreen() {
     return booking.status === activeTab;
   });
 
+  // Ringkasan: dihitung langsung dari data bookings yang sudah ada
+  const totalBookings = bookings.length;
+  const totalSelesai = bookings.filter((b) => b.status === "Selesai").length;
+  const totalDibatalkan = bookings.filter(
+    (b) => b.status === "Dibatalkan" || b.status === "Cancelled"
+  ).length;
+
+  // Badge status: warna lembut (kuning = menunggu, biru = diproses,
+  // hijau = berhasil, merah = gagal/batal)
   const renderStatusBadge = (status) => {
     switch (status) {
       case "Pending":
         return (
           <View style={[styles.badge, styles.badgePending]}>
-            <Clock size={12} color="#fbbf24" />
-            <Text style={[styles.badgeText, { color: "#fbbf24" }]}>Pending</Text>
+            <Clock size={12} color="#b45309" />
+            <Text style={[styles.badgeText, { color: "#b45309" }]}>Pending</Text>
           </View>
         );
       case "Menunggu Pembatalan":
         return (
           <View style={[styles.badge, styles.badgeOrange]}>
-            <AlertCircle size={12} color="#fb923c" />
-            <Text style={[styles.badgeText, { color: "#fb923c" }]}>
+            <AlertCircle size={12} color="#c2410c" />
+            <Text style={[styles.badgeText, { color: "#c2410c" }]}>
               Menunggu Pembatalan
             </Text>
           </View>
         );
       case "Menunggu Reschedule":
         return (
-          <View style={[styles.badge, styles.badgePurple]}>
-            <Calendar size={12} color="#c084fc" />
-            <Text style={[styles.badgeText, { color: "#c084fc" }]}>
+          <View style={[styles.badge, styles.badgeOrange]}>
+            <Calendar size={12} color="#c2410c" />
+            <Text style={[styles.badgeText, { color: "#c2410c" }]}>
               Menunggu Reschedule
             </Text>
           </View>
@@ -231,17 +243,17 @@ export default function RiwayatServisScreen() {
       case "Dikonfirmasi":
         return (
           <View style={[styles.badge, styles.badgeBlue]}>
-            <CheckCircle2 size={12} color="#60a5fa" />
-            <Text style={[styles.badgeText, { color: "#60a5fa" }]}>
+            <CheckCircle2 size={12} color="#1d4ed8" />
+            <Text style={[styles.badgeText, { color: "#1d4ed8" }]}>
               Dikonfirmasi
             </Text>
           </View>
         );
       case "Sedang Dikerjakan":
         return (
-          <View style={[styles.badge, styles.badgePurple]}>
-            <Wrench size={12} color="#c084fc" />
-            <Text style={[styles.badgeText, { color: "#c084fc" }]}>
+          <View style={[styles.badge, styles.badgeBlue]}>
+            <Wrench size={12} color="#1d4ed8" />
+            <Text style={[styles.badgeText, { color: "#1d4ed8" }]}>
               Sedang Dikerjakan
             </Text>
           </View>
@@ -249,16 +261,16 @@ export default function RiwayatServisScreen() {
       case "Selesai":
         return (
           <View style={[styles.badge, styles.badgeGreen]}>
-            <CheckCircle2 size={12} color="#34d399" />
-            <Text style={[styles.badgeText, { color: "#34d399" }]}>Selesai</Text>
+            <CheckCircle2 size={12} color="#15803d" />
+            <Text style={[styles.badgeText, { color: "#15803d" }]}>Selesai</Text>
           </View>
         );
       case "Dibatalkan":
       case "Cancelled":
         return (
           <View style={[styles.badge, styles.badgeRed]}>
-            <XCircle size={12} color="#ef4444" />
-            <Text style={[styles.badgeText, { color: "#ef4444" }]}>
+            <XCircle size={12} color="#b91c1c" />
+            <Text style={[styles.badgeText, { color: "#b91c1c" }]}>
               Dibatalkan
             </Text>
           </View>
@@ -266,7 +278,7 @@ export default function RiwayatServisScreen() {
       default:
         return (
           <View style={[styles.badge, styles.badgeDefault]}>
-            <Text style={[styles.badgeText, { color: "#d4d4d8" }]}>
+            <Text style={[styles.badgeText, { color: "#52525b" }]}>
               {status}
             </Text>
           </View>
@@ -277,7 +289,7 @@ export default function RiwayatServisScreen() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#dc2626" />
+        <ActivityIndicator size="large" color="#18181b" />
         <Text style={styles.loadingText}>Memuat data...</Text>
         <BottomNavBar activeTab="riwayat" />
       </View>
@@ -286,11 +298,14 @@ export default function RiwayatServisScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
       {/* HEADER NAVBAR */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Riwayat Servis</Text>
+        <Text style={styles.headerTitle}>Riwayat</Text>
+        <Text style={styles.headerSubtitle}>
+          Lihat seluruh aktivitas servis Anda sebelumnya
+        </Text>
       </View>
 
       {/* MAIN CONTENT */}
@@ -299,7 +314,23 @@ export default function RiwayatServisScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* HORIZONTAL TABS */}
+        {/* RINGKASAN (data nyata dari daftar booking) */}
+        <View style={styles.statRow}>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{totalBookings}</Text>
+            <Text style={styles.statLabel}>Total</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{totalSelesai}</Text>
+            <Text style={styles.statLabel}>Selesai</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{totalDibatalkan}</Text>
+            <Text style={styles.statLabel}>Dibatalkan</Text>
+          </View>
+        </View>
+
+        {/* HORIZONTAL TABS (filter status) */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -311,6 +342,7 @@ export default function RiwayatServisScreen() {
             return (
               <TouchableOpacity
                 key={tab}
+                activeOpacity={0.7}
                 onPress={() => setActiveTab(tab)}
                 style={[styles.tabButton, isActive && styles.tabButtonActive]}
               >
@@ -328,9 +360,11 @@ export default function RiwayatServisScreen() {
         <View style={styles.listContainer}>
           {filteredBookings.length === 0 ? (
             <View style={styles.emptyState}>
-              <FileText size={48} color="#52525b" />
+              <View style={styles.emptyIconWrap}>
+                <FileText size={32} color="#18181b" />
+              </View>
               <Text style={styles.emptyTitle}>
-                Tidak Ada Pesanan ({activeTab})
+                Belum Ada Riwayat ({activeTab})
               </Text>
               <Text style={styles.emptyDescription}>
                 Kamu belum memiliki riwayat reservasi servis kendaraan dengan
@@ -338,6 +372,7 @@ export default function RiwayatServisScreen() {
               </Text>
               <TouchableOpacity
                 onPress={() => router.push("/dashboard")}
+                activeOpacity={0.85}
                 style={styles.emptyButton}
               >
                 <Text style={styles.emptyButtonText}>Buat Booking Sekarang</Text>
@@ -346,8 +381,6 @@ export default function RiwayatServisScreen() {
           ) : (
             filteredBookings.map((booking) => (
               <View key={booking.id} style={styles.bookingCard}>
-                <View style={styles.redBorderLeft} />
-
                 {/* CARD HEADER */}
                 <View style={styles.cardHeader}>
                   <View style={styles.codeWrapper}>
@@ -365,7 +398,7 @@ export default function RiwayatServisScreen() {
                     </Text>
                     <View style={styles.vehicleRow}>
                       <View style={styles.vehiclePill}>
-                        <Car size={14} color="#ef4444" />
+                        <Car size={14} color="#18181b" />
                         <Text style={styles.vehicleText}>
                           {booking.vehicle_name}
                         </Text>
@@ -383,7 +416,7 @@ export default function RiwayatServisScreen() {
                     <View style={styles.scheduleBox}>
                       <Text style={styles.scheduleLabel}>Jadwal Servis:</Text>
                       <View style={styles.scheduleDateRow}>
-                        <Calendar size={14} color="#ef4444" />
+                        <Calendar size={14} color="#18181b" />
                         <Text style={styles.scheduleDateText}>
                           {new Date(
                             booking.booking_date
@@ -397,26 +430,28 @@ export default function RiwayatServisScreen() {
                       booking.status === "Dikonfirmasi") && (
                       <View style={styles.actionButtons}>
                         <TouchableOpacity
+                          activeOpacity={0.7}
                           onPress={() => {
                             setSelectedBookingId(booking.id);
                             setRescheduleModalVisible(true);
                           }}
                           style={styles.btnReschedule}
                         >
-                          <Calendar size={14} color="#60a5fa" />
+                          <Calendar size={14} color="#18181b" />
                           <Text style={styles.btnRescheduleText}>
                             Reschedule
                           </Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
+                          activeOpacity={0.7}
                           onPress={() => {
                             setSelectedBookingId(booking.id);
                             setCancelModalVisible(true);
                           }}
                           style={styles.btnCancel}
                         >
-                          <Ban size={14} color="#ef4444" />
+                          <Ban size={14} color="#b91c1c" />
                           <Text style={styles.btnCancelText}>Batalkan</Text>
                         </TouchableOpacity>
                       </View>
@@ -425,7 +460,7 @@ export default function RiwayatServisScreen() {
 
                   {booking.status === "Sedang Dikerjakan" && (
                     <View style={styles.workingNotice}>
-                      <Wrench size={14} color="#c084fc" />
+                      <Wrench size={14} color="#1d4ed8" />
                       <Text style={styles.workingNoticeText}>
                         Mekanik sedang menangani perbaikan kendaraanmu di
                         bengkel.
@@ -446,7 +481,10 @@ export default function RiwayatServisScreen() {
         animationType="fade"
         onRequestClose={() => setCancelModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Alasan Pembatalan</Text>
             <Text style={styles.modalSubtitle}>
@@ -456,7 +494,7 @@ export default function RiwayatServisScreen() {
               value={cancelReason}
               onChangeText={setCancelReason}
               placeholder="Contoh: Ada keperluan mendadak..."
-              placeholderTextColor="#71717a"
+              placeholderTextColor="#a1a1aa"
               multiline
               numberOfLines={3}
               style={[styles.modalInput, styles.modalTextArea]}
@@ -464,19 +502,21 @@ export default function RiwayatServisScreen() {
             <View style={styles.modalActions}>
               <TouchableOpacity
                 onPress={() => setCancelModalVisible(false)}
+                activeOpacity={0.7}
                 style={styles.modalBtnCancel}
               >
                 <Text style={styles.modalBtnCancelText}>Kembali</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={submitCancelBooking}
+                activeOpacity={0.85}
                 style={styles.modalBtnSubmit}
               >
                 <Text style={styles.modalBtnSubmitText}>Kirim Pengajuan</Text>
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* MODAL RESCHEDULE BOOKING */}
@@ -486,7 +526,10 @@ export default function RiwayatServisScreen() {
         animationType="fade"
         onRequestClose={() => setRescheduleModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Ubah Jadwal (Reschedule)</Text>
 
@@ -498,7 +541,7 @@ export default function RiwayatServisScreen() {
                   setRescheduleData((p) => ({ ...p, date: val }))
                 }
                 placeholder="2026-03-25"
-                placeholderTextColor="#71717a"
+                placeholderTextColor="#a1a1aa"
                 style={styles.modalInput}
               />
             </View>
@@ -511,7 +554,7 @@ export default function RiwayatServisScreen() {
                   setRescheduleData((p) => ({ ...p, time: val }))
                 }
                 placeholder="10:00"
-                placeholderTextColor="#71717a"
+                placeholderTextColor="#a1a1aa"
                 style={styles.modalInput}
               />
             </View>
@@ -524,7 +567,7 @@ export default function RiwayatServisScreen() {
                   setRescheduleData((p) => ({ ...p, reason: val }))
                 }
                 placeholder="Contoh: Ada halangan mendadak..."
-                placeholderTextColor="#71717a"
+                placeholderTextColor="#a1a1aa"
                 multiline
                 numberOfLines={2}
                 style={[styles.modalInput, styles.modalTextArea]}
@@ -534,12 +577,14 @@ export default function RiwayatServisScreen() {
             <View style={styles.modalActions}>
               <TouchableOpacity
                 onPress={() => setRescheduleModalVisible(false)}
+                activeOpacity={0.7}
                 style={styles.modalBtnCancel}
               >
                 <Text style={styles.modalBtnCancelText}>Batal</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={submitRescheduleBooking}
+                activeOpacity={0.85}
                 style={styles.modalBtnSubmit}
               >
                 <Text style={styles.modalBtnSubmitText}>
@@ -548,242 +593,283 @@ export default function RiwayatServisScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
       <BottomNavBar activeTab="riwayat" />
     </SafeAreaView>
   );
 }
 
+const softShadow = {
+  shadowColor: "#000",
+  shadowOpacity: 0.06,
+  shadowRadius: 10,
+  shadowOffset: { width: 0, height: 3 },
+  elevation: 2,
+};
+
+const webNoOutline = Platform.select({
+  web: { outlineStyle: "none" },
+  default: {},
+});
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: "#fff",
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: "#fff",
     justifyContent: "center",
     alignItems: "center",
   },
   loadingText: {
     color: "#71717a",
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
     marginTop: 12,
   },
+
+  // HEADER
   header: {
-    height: 68,
-    backgroundColor: "rgba(9, 9, 11, 0.95)",
-    borderBottomWidth: 1,
-    borderBottomColor: "#18181b",
-    paddingHorizontal: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+    width: "100%",
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: "center",
+    backgroundColor: "#fff",
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
     zIndex: 10,
   },
   headerTitle: {
-    color: "#fff",
-    fontSize: 16,
+    color: "#3f3f46",
+    fontSize: 28,
     fontWeight: "900",
-    textAlign: "center",
   },
-  btnPrimary: {
-    backgroundColor: "#dc2626",
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
+  headerSubtitle: {
+    color: "#71717a",
+    fontSize: 13,
+    marginTop: 4,
   },
-  btnPrimaryText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "700",
-  },
+
   scrollView: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: "#fff",
   },
   scrollContent: {
-    padding: 16,
+    width: "100%",
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: "center",
+    paddingHorizontal: 20,
+    paddingTop: 12,
     paddingBottom: 120,
   },
-  tabsContainer: {
-    backgroundColor: "rgba(9, 9, 11, 0.85)",
+
+  // RINGKASAN
+  statRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 18,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: "#18181b",
-    borderRadius: 16,
-    padding: 6,
-    marginBottom: 20,
+    borderColor: "#f4f4f5",
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    ...softShadow,
+  },
+  statValue: {
+    color: "#18181b",
+    fontSize: 22,
+    fontWeight: "900",
+  },
+  statLabel: {
+    color: "#71717a",
+    fontSize: 12,
+    marginTop: 2,
+  },
+
+  // FILTER TABS
+  tabsContainer: {
+    marginBottom: 18,
+    flexGrow: 0,
   },
   tabsContent: {
     flexDirection: "row",
-    gap: 6,
+    gap: 8,
+    paddingRight: 8,
   },
   tabButton: {
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: 999,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#e4e4e7",
   },
   tabButtonActive: {
-    backgroundColor: "#dc2626",
+    backgroundColor: "#18181b",
+    borderColor: "#18181b",
   },
   tabText: {
-    color: "#a1a1aa",
-    fontSize: 12,
-    fontWeight: "700",
+    color: "#52525b",
+    fontSize: 12.5,
+    fontWeight: "600",
   },
   tabTextActive: {
     color: "#fff",
   },
+
   listContainer: {
-    gap: 16,
+    gap: 14,
   },
+
+  // EMPTY STATE
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
     padding: 32,
-    backgroundColor: "rgba(9, 9, 11, 0.85)",
-    borderRadius: 20,
+    backgroundColor: "#fafafa",
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: "#18181b",
-    marginTop: 20,
+    borderColor: "#f4f4f5",
+    marginTop: 8,
+  },
+  emptyIconWrap: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: "#f4f4f5",
+    alignItems: "center",
+    justifyContent: "center",
   },
   emptyTitle: {
-    color: "#fff",
+    color: "#18181b",
     fontSize: 16,
     fontWeight: "800",
     marginTop: 16,
     textAlign: "center",
   },
   emptyDescription: {
-    color: "#a1a1aa",
-    fontSize: 12,
+    color: "#71717a",
+    fontSize: 13,
     textAlign: "center",
     marginTop: 8,
-    lineHeight: 18,
+    lineHeight: 20,
   },
   emptyButton: {
     marginTop: 20,
-    backgroundColor: "#dc2626",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 10,
+    backgroundColor: "#18181b",
+    height: 48,
+    paddingHorizontal: 24,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
   },
   emptyButtonText: {
     color: "#fff",
-    fontSize: 12,
-    fontWeight: "700",
+    fontSize: 13.5,
+    fontWeight: "600",
   },
+
+  // BOOKING CARD
   bookingCard: {
-    backgroundColor: "rgba(9, 9, 11, 0.85)",
+    backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: "#18181b",
-    borderRadius: 20,
-    padding: 20,
-    position: "relative",
-    overflow: "hidden",
-  },
-  redBorderLeft: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    bottom: 0,
-    width: 5,
-    backgroundColor: "#dc2626",
+    borderColor: "#f4f4f5",
+    borderRadius: 22,
+    padding: 18,
+    ...softShadow,
   },
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     borderBottomWidth: 1,
-    borderBottomColor: "#18181b",
+    borderBottomColor: "#f4f4f5",
     paddingBottom: 12,
-    marginBottom: 16,
+    marginBottom: 14,
+    gap: 8,
   },
   codeWrapper: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    flexShrink: 1,
   },
   codeLabel: {
     fontSize: 11,
-    color: "#a1a1aa",
+    color: "#71717a",
   },
   codeValue: {
     fontSize: 12,
-    fontWeight: "900",
-    color: "#fff",
-    fontFamily: "monospace",
-    backgroundColor: "#18181b",
+    fontWeight: "800",
+    color: "#18181b",
+    backgroundColor: "#f4f4f5",
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "#27272a",
+    paddingVertical: 3,
+    borderRadius: 8,
+    overflow: "hidden",
   },
   cardBody: {
-    gap: 16,
+    gap: 14,
   },
   serviceInfo: {
     gap: 8,
   },
   serviceType: {
-    fontSize: 18,
-    fontWeight: "900",
-    color: "#fff",
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#18181b",
   },
   vehicleRow: {
     flexDirection: "row",
     alignItems: "center",
+    flexWrap: "wrap",
     gap: 8,
   },
   vehiclePill: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#18181b",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#27272a",
+    backgroundColor: "#f4f4f5",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
   },
   vehicleText: {
-    color: "#e4e4e7",
+    color: "#18181b",
     fontSize: 12,
     fontWeight: "600",
   },
   platePill: {
-    backgroundColor: "#18181b",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
+    backgroundColor: "#fff",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#27272a",
+    borderColor: "#e4e4e7",
   },
   plateText: {
-    color: "#e4e4e7",
-    fontSize: 11,
+    color: "#3f3f46",
+    fontSize: 11.5,
     fontWeight: "700",
-    fontFamily: "monospace",
   },
   cardFooter: {
     gap: 12,
   },
   scheduleBox: {
-    backgroundColor: "rgba(24, 24, 27, 0.6)",
+    backgroundColor: "#f4f4f5",
     padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#27272a",
+    borderRadius: 16,
   },
   scheduleLabel: {
     fontSize: 11,
-    color: "#a1a1aa",
+    color: "#71717a",
     marginBottom: 4,
   },
   scheduleDateRow: {
@@ -792,8 +878,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   scheduleDateText: {
-    color: "#fff",
-    fontSize: 12,
+    color: "#18181b",
+    fontSize: 13,
     fontWeight: "700",
   },
   actionButtons: {
@@ -806,16 +892,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    backgroundColor: "#18181b",
+    backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: "rgba(96, 165, 250, 0.3)",
-    paddingVertical: 10,
-    borderRadius: 12,
+    borderColor: "#d4d4d8",
+    height: 44,
+    borderRadius: 999,
   },
   btnRescheduleText: {
-    color: "#60a5fa",
-    fontSize: 12,
-    fontWeight: "700",
+    color: "#18181b",
+    fontSize: 12.5,
+    fontWeight: "600",
   },
   btnCancel: {
     flex: 1,
@@ -823,149 +909,147 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    backgroundColor: "#18181b",
+    backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: "rgba(239, 68, 68, 0.3)",
-    paddingVertical: 10,
-    borderRadius: 12,
+    borderColor: "#fecaca",
+    height: 44,
+    borderRadius: 999,
   },
   btnCancelText: {
-    color: "#ef4444",
-    fontSize: 12,
-    fontWeight: "700",
+    color: "#b91c1c",
+    fontSize: 12.5,
+    fontWeight: "600",
   },
   workingNotice: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginTop: 8,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#18181b",
+    backgroundColor: "#eff6ff",
+    borderRadius: 14,
+    padding: 12,
   },
   workingNoticeText: {
-    color: "#c084fc",
-    fontSize: 11,
-    fontWeight: "600",
+    color: "#1d4ed8",
+    fontSize: 11.5,
+    fontWeight: "500",
     flex: 1,
+    lineHeight: 17,
   },
 
-  // BADGES
+  // BADGES (warna lembut)
   badge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 5,
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: 999,
-    borderWidth: 1,
+    flexShrink: 1,
   },
   badgeText: {
-    fontSize: 10,
-    fontWeight: "800",
-    textTransform: "uppercase",
+    fontSize: 11,
+    fontWeight: "700",
   },
   badgePending: {
-    backgroundColor: "rgba(245, 158, 11, 0.1)",
-    borderColor: "rgba(245, 158, 11, 0.2)",
+    backgroundColor: "#fef3c7",
   },
   badgeOrange: {
-    backgroundColor: "rgba(249, 115, 22, 0.1)",
-    borderColor: "rgba(249, 115, 22, 0.2)",
-  },
-  badgePurple: {
-    backgroundColor: "rgba(168, 85, 247, 0.1)",
-    borderColor: "rgba(168, 85, 247, 0.2)",
+    backgroundColor: "#ffedd5",
   },
   badgeBlue: {
-    backgroundColor: "rgba(59, 130, 246, 0.1)",
-    borderColor: "rgba(59, 130, 246, 0.2)",
+    backgroundColor: "#dbeafe",
   },
   badgeGreen: {
-    backgroundColor: "rgba(16, 185, 129, 0.1)",
-    borderColor: "rgba(16, 185, 129, 0.2)",
+    backgroundColor: "#dcfce7",
   },
   badgeRed: {
-    backgroundColor: "rgba(239, 68, 68, 0.1)",
-    borderColor: "rgba(239, 68, 68, 0.2)",
+    backgroundColor: "#fee2e2",
   },
   badgeDefault: {
-    backgroundColor: "#27272a",
-    borderColor: "#3f3f46",
+    backgroundColor: "#f4f4f5",
   },
 
   // MODALS
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.8)",
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
   },
   modalContent: {
     width: "100%",
-    backgroundColor: "#09090b",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 20,
-    padding: 20,
-    gap: 16,
+    maxWidth: 420,
+    backgroundColor: "#fff",
+    borderRadius: 28,
+    padding: 22,
+    gap: 14,
   },
   modalTitle: {
-    color: "#fff",
-    fontSize: 16,
+    color: "#18181b",
+    fontSize: 18,
     fontWeight: "800",
   },
   modalSubtitle: {
-    color: "#a1a1aa",
-    fontSize: 12,
+    color: "#71717a",
+    fontSize: 13,
+    lineHeight: 20,
   },
   inputGroup: {
     gap: 6,
   },
   inputLabel: {
-    color: "#a1a1aa",
-    fontSize: 11,
+    color: "#3f3f46",
+    fontSize: 12.5,
+    fontWeight: "600",
   },
   modalInput: {
-    backgroundColor: "#18181b",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 10,
-    padding: 10,
-    color: "#fff",
-    fontSize: 12,
+    backgroundColor: "#f4f4f5",
+    borderWidth: 1.5,
+    borderColor: "transparent",
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: "#18181b",
+    fontSize: 13.5,
+    ...webNoOutline,
   },
   modalTextArea: {
     textAlignVertical: "top",
-    minHeight: 60,
+    minHeight: 72,
   },
   modalActions: {
     flexDirection: "row",
     justifyContent: "flex-end",
     gap: 10,
-    marginTop: 8,
+    marginTop: 6,
   },
   modalBtnCancel: {
-    backgroundColor: "#27272a",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 10,
+    flex: 1,
+    height: 48,
+    borderRadius: 999,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#d4d4d8",
+    alignItems: "center",
+    justifyContent: "center",
   },
   modalBtnCancelText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "700",
+    color: "#18181b",
+    fontSize: 13.5,
+    fontWeight: "600",
   },
   modalBtnSubmit: {
-    backgroundColor: "#dc2626",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 10,
+    flex: 1.4,
+    height: 48,
+    borderRadius: 999,
+    backgroundColor: "#18181b",
+    alignItems: "center",
+    justifyContent: "center",
   },
   modalBtnSubmitText: {
     color: "#fff",
-    fontSize: 12,
-    fontWeight: "700",
+    fontSize: 13.5,
+    fontWeight: "600",
   },
 });

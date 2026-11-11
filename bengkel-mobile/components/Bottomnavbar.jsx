@@ -2,7 +2,6 @@ import React, { useRef, useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Platform } from "react-native";
 import { useRouter, usePathname } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BlurView } from "expo-blur";
 import { Home, ClipboardList, User } from "lucide-react-native";
 
 // expo-haptics bersifat opsional -> kalau belum ter-install, komponen tetap jalan tanpa getar
@@ -13,23 +12,12 @@ try {
   Haptics = null;
 }
 
-// expo-linear-gradient dipakai untuk kilau/specular highlight khas liquid glass.
-// Kalau belum ter-install, kita fallback ke View transparan biasa (tetap jalan).
-let LinearGradient = View;
-try {
-  LinearGradient = require("expo-linear-gradient").LinearGradient;
-} catch (e) {
-  LinearGradient = View;
-}
-
-// Ukuran lingkaran tombol Home. Diameter ini yang menentukan seberapa besar
-// bagian yang "nongol" keluar dari tepi atas bar.
-const HOME_SIZE = 64;
+// Warna konsisten dengan identitas aplikasi (putih, hitam, abu-abu)
+const COLOR_ACTIVE = "#171717";
+const COLOR_INACTIVE = "#9CA3AF";
+const COLOR_BORDER = "#F1F1F1";
 
 // ======== TAB SAMPING (Riwayat & Profile) ========
-// Home TIDAK dimasukkan ke daftar ini karena dirender terpisah sebagai
-// lingkaran mengambang (lihat komponen HomeButton di bawah), supaya tidak
-// ke-clip oleh overflow:hidden milik bar.
 const SIDE_TABS = [
   { key: "riwayat", label: "Riwayat", icon: ClipboardList, route: "/RiwayatService" },
   { key: "profile", label: "Profile", icon: User, route: "/profile" },
@@ -39,36 +27,22 @@ const HOME_TAB = { key: "home", label: "Home", icon: Home, route: "/dashboard" }
 
 function SideTabButton({ tab, isActive, onPress }) {
   const scale = useRef(new Animated.Value(1)).current;
-  const lift = useRef(new Animated.Value(isActive ? 1 : 0)).current;
-  const pillOpacity = useRef(new Animated.Value(isActive ? 1 : 0)).current;
-  const pillScale = useRef(new Animated.Value(isActive ? 1 : 0.6)).current;
+  const activeAnim = useRef(new Animated.Value(isActive ? 1 : 0)).current;
 
   useEffect(() => {
-    Animated.spring(lift, {
+    Animated.timing(activeAnim, {
       toValue: isActive ? 1 : 0,
-      useNativeDriver: true,
-      speed: 16,
-      bounciness: 8,
-    }).start();
-    Animated.spring(pillScale, {
-      toValue: isActive ? 1 : 0.6,
-      useNativeDriver: true,
-      speed: 16,
-      bounciness: 10,
-    }).start();
-    Animated.timing(pillOpacity, {
-      toValue: isActive ? 1 : 0,
-      duration: 220,
+      duration: 200,
       useNativeDriver: true,
     }).start();
   }, [isActive]);
 
   const handlePressIn = () => {
     Animated.spring(scale, {
-      toValue: 0.86,
+      toValue: 0.92,
       useNativeDriver: true,
       speed: 40,
-      bounciness: 6,
+      bounciness: 4,
     }).start();
   };
 
@@ -76,105 +50,49 @@ function SideTabButton({ tab, isActive, onPress }) {
     Animated.spring(scale, {
       toValue: 1,
       useNativeDriver: true,
-      speed: 18,
-      bounciness: 9,
+      speed: 20,
+      bounciness: 6,
     }).start();
   };
 
-  const translateY = lift.interpolate({ inputRange: [0, 1], outputRange: [0, -3] });
+  const indicatorScaleX = activeAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] });
   const Icon = tab.icon;
 
   return (
     <TouchableOpacity
-      activeOpacity={0.7}
+      activeOpacity={0.8}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={onPress}
       style={styles.tabBtn}
     >
-      <Animated.View style={[styles.tabInner, { transform: [{ scale }, { translateY }] }]}>
-        {/* Pil kaca yang muncul di belakang ikon saat tab aktif */}
+      <Animated.View style={[styles.tabInner, { transform: [{ scale }] }]}>
+        {/* Garis indikator aktif di atas ikon */}
         <Animated.View
           style={[
-            styles.activePill,
-            {
-              opacity: pillOpacity,
-              transform: [{ scale: pillScale }],
-            },
+            styles.activeIndicator,
+            { opacity: activeAnim, transform: [{ scaleX: indicatorScaleX }] },
           ]}
-        >
-          <BlurView
-            intensity={30}
-            tint="dark"
-            experimentalBlurMethod={Platform.OS === "android" ? "dimezisBlurView" : undefined}
-            style={StyleSheet.absoluteFillObject}
-          >
-            <View style={styles.activePillTint} />
-          </BlurView>
-        </Animated.View>
+        />
 
-        <Icon size={22} color={isActive ? "#ff5b5b" : "#a1a1aa"} strokeWidth={isActive ? 2.4 : 2} />
+        {/* Background abu-abu sangat muda untuk menu aktif */}
+        <View style={[styles.iconWrap, isActive && styles.iconWrapActive]}>
+          <Icon
+            size={22}
+            color={isActive ? COLOR_ACTIVE : COLOR_INACTIVE}
+            strokeWidth={isActive ? 2.3 : 1.9}
+          />
+        </View>
         <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{tab.label}</Text>
       </Animated.View>
     </TouchableOpacity>
   );
 }
 
-// Tombol Home -> lingkaran kaca yang mengambang DI LUAR bar (bukan child dari
-// BlurView yang overflow:hidden), makanya bisa beneran keluar setengah dari
-// tepi atas bar tanpa kepotong.
+// Tombol Home -> kini tampil sebagai tab biasa yang sejajar dengan tab lain
+// (tidak lagi lingkaran mengambang), tetapi nama komponen & props tetap sama.
 function HomeButton({ isActive, onPress }) {
-  const scale = useRef(new Animated.Value(1)).current;
-
-  const handlePressIn = () => {
-    Animated.spring(scale, {
-      toValue: 0.88,
-      useNativeDriver: true,
-      speed: 40,
-      bounciness: 6,
-    }).start();
-  };
-
-  const handlePressOut = () => {
-    Animated.spring(scale, {
-      toValue: 1,
-      useNativeDriver: true,
-      speed: 18,
-      bounciness: 9,
-    }).start();
-  };
-
-  return (
-    <View style={styles.homeFloatWrap} pointerEvents="box-none">
-      <TouchableOpacity
-        activeOpacity={0.9}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        onPress={onPress}
-        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-      >
-        <Animated.View style={[styles.homeGlow, isActive && styles.homeGlowActive, { transform: [{ scale }] }]}>
-          <BlurView
-            intensity={40}
-            tint="dark"
-            experimentalBlurMethod={Platform.OS === "android" ? "dimezisBlurView" : undefined}
-            style={[styles.homeBlur, isActive ? styles.homeBlurActive : styles.homeBlurInactive]}
-          >
-            <View style={[styles.homeTint, isActive ? styles.homeTintActive : styles.homeTintInactive]} />
-            <LinearGradient
-              pointerEvents="none"
-              colors={["rgba(255,255,255,0.34)", "rgba(255,255,255,0.05)", "rgba(255,255,255,0.01)"]}
-              locations={[0, 0.35, 1]}
-              start={{ x: 0.2, y: 0 }}
-              end={{ x: 0.8, y: 1 }}
-              style={styles.homeSheen}
-            />
-            <Home size={27} color={isActive ? "#FFFFFF" : "#a1a1aa"} strokeWidth={2.4} />
-          </BlurView>
-        </Animated.View>
-      </TouchableOpacity>
-    </View>
-  );
+  return <SideTabButton tab={HOME_TAB} isActive={isActive} onPress={onPress} />;
 }
 
 export default function BottomNavBar({ activeTab }) {
@@ -202,65 +120,23 @@ export default function BottomNavBar({ activeTab }) {
 
   return (
     <View
-      style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 10) }]}
+      style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 8) }]}
       pointerEvents="box-none"
     >
-      <View style={styles.glassShadowWrap}>
-        <BlurView
-          intensity={Platform.OS === "ios" ? 65 : 90}
-          tint="dark"
-          // WAJIB untuk Android: tanpa prop ini BlurView TIDAK benar-benar blur,
-          // dia cuma jadi layer transparan datar.
-          // Catatan: method native ini butuh custom dev build / EAS build,
-          // TIDAK akan aktif di Expo Go biasa.
-          experimentalBlurMethod={Platform.OS === "android" ? "dimezisBlurView" : undefined}
-          style={styles.blurContainer}
-        >
-          {/* Lapisan tint gelap tipis supaya kontras ikon tetap terjaga. */}
-          <View style={styles.darkTint} />
+      <View style={styles.innerRow}>
+        <SideTabButton
+          tab={SIDE_TABS[0]}
+          isActive={currentTab === SIDE_TABS[0].key}
+          onPress={() => handlePress(SIDE_TABS[0])}
+        />
 
-          {/* Lapisan warna halus permanen -> supaya kaca tetap terlihat "hidup" */}
-          <LinearGradient
-            colors={["rgba(239,68,68,0.10)", "rgba(120,120,255,0.05)"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFillObject}
-          />
-          <LinearGradient
-            pointerEvents="none"
-            colors={["rgba(255,255,255,0.17)", "rgba(255,255,255,0.025)", "rgba(255,255,255,0.06)"]}
-            locations={[0, 0.48, 1]}
-            start={{ x: 0.5, y: 0 }}
-            end={{ x: 0.5, y: 1 }}
-            style={styles.glassSheen}
-          />
-
-          <View style={styles.innerRow}>
-            <SideTabButton
-              tab={SIDE_TABS[0]}
-              isActive={currentTab === SIDE_TABS[0].key}
-              onPress={() => handlePress(SIDE_TABS[0])}
-            />
-
-            {/* Spacer kosong seukuran tombol Home, supaya 2 tab samping tetap
-                simetris kiri-kanan walau tombol Home dirender terpisah di luar. */}
-            <View style={styles.homeSpacer} />
-
-            <SideTabButton
-              tab={SIDE_TABS[1]}
-              isActive={currentTab === SIDE_TABS[1].key}
-              onPress={() => handlePress(SIDE_TABS[1])}
-            />
-          </View>
-        </BlurView>
-
-        {/* Dirender SETELAH BlurView (bukan di dalamnya) supaya tidak ke-clip
-            oleh overflow:hidden milik bar -> ini yang bikin lingkarannya bisa
-            beneran nongol keluar setengah dari tepi atas bar. */}
         <HomeButton isActive={currentTab === HOME_TAB.key} onPress={() => handlePress(HOME_TAB)} />
-        <Text style={[styles.homeLabel, currentTab === HOME_TAB.key ? styles.homeLabelActive : styles.homeLabelInactive]}>
-          {HOME_TAB.label}
-        </Text>
+
+        <SideTabButton
+          tab={SIDE_TABS[1]}
+          isActive={currentTab === SIDE_TABS[1].key}
+          onPress={() => handlePress(SIDE_TABS[1])}
+        />
       </View>
     </View>
   );
@@ -272,48 +148,28 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    paddingTop: 10,
-  },
-  glassShadowWrap: {
-    marginHorizontal: 16,
-    borderRadius: 30,
-    shadowColor: "#000",
-    shadowOpacity: 0.35,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 14,
-    // relative supaya HomeButton (position: absolute) bisa diposisikan
-    // relatif terhadap bar ini, bukan terhadap layar.
-    position: "relative",
-  },
-  blurContainer: {
-    borderRadius: 30,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.20)",
-  },
-  darkTint: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor:
-      Platform.OS === "android" ? "rgba(9,9,11,0.18)" : "rgba(9,9,11,0.10)",
-  },
-  glassSheen: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.9,
-  },
-  homeSheen: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: HOME_SIZE / 2,
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderTopWidth: 1,
+    borderColor: COLOR_BORDER,
+    paddingTop: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOpacity: 0.08,
+        shadowRadius: 14,
+        shadowOffset: { width: 0, height: -4 },
+      },
+      default: { elevation: 16 },
+    }),
   },
   innerRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-  },
-  homeSpacer: {
-    width: HOME_SIZE,
+    paddingHorizontal: 12,
+    height: 62,
   },
   tabBtn: {
     flex: 1,
@@ -323,91 +179,35 @@ const styles = StyleSheet.create({
   },
   tabInner: {
     alignItems: "center",
-    gap: 3,
+    gap: 2,
+    minWidth: 64,
   },
-  activePill: {
+  activeIndicator: {
     position: "absolute",
-    top: -8,
-    width: 52,
-    height: 40,
-    borderRadius: 20,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(239,68,68,0.30)",
+    top: -10,
+    width: 22,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: COLOR_ACTIVE,
   },
-  activePillTint: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(239,68,68,0.12)",
-  },
-  tabLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#a1a1aa",
-  },
-  tabLabelActive: {
-    color: "#ff5b5b",
-  },
-
-  // ---- Tombol Home mengambang (di luar bar) ----
-  homeFloatWrap: {
-    position: "absolute",
-    // Naik setengah tinggi lingkaran dari tepi atas bar -> setengah lingkaran
-    // ada DI ATAS bar (nongol keluar), setengah lagi menutupi bar.
-    top: -(HOME_SIZE / 2),
-    left: 0,
-    right: 0,
-    alignItems: "center",
-  },
-  homeGlow: {
-    width: HOME_SIZE,
-    height: HOME_SIZE,
-    borderRadius: HOME_SIZE / 2,
-    shadowColor: "#000",
-    shadowOpacity: 0.25,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 10,
-  },
-  homeGlowActive: {
-    shadowColor: "#ef4444",
-    shadowOpacity: 0.55,
-  },
-  homeBlur: {
-    flex: 1,
-    borderRadius: HOME_SIZE / 2,
-    overflow: "hidden",
+  iconWrap: {
+    width: 46,
+    height: 30,
+    borderRadius: 15,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1.5,
+    backgroundColor: "transparent",
   },
-  homeBlurActive: {
-    borderColor: "rgba(239,68,68,0.5)",
+  iconWrapActive: {
+    backgroundColor: "#F4F4F5",
   },
-  homeBlurInactive: {
-    borderColor: "rgba(161,161,170,0.25)",
+  tabLabel: {
+    fontSize: 10.5,
+    fontWeight: "500",
+    color: COLOR_INACTIVE,
   },
-  homeTint: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  homeTintActive: {
-    backgroundColor: "rgba(220,38,38,0.55)",
-  },
-  homeTintInactive: {
-    backgroundColor: "rgba(39,39,42,0.72)",
-  },
-  homeLabel: {
-    position: "absolute",
-    top: HOME_SIZE / 2 + 4,
-    left: 0,
-    right: 0,
-    textAlign: "center",
-    fontSize: 10,
+  tabLabelActive: {
     fontWeight: "700",
-  },
-  homeLabelActive: {
-    color: "#ff5b5b",
-  },
-  homeLabelInactive: {
-    color: "#a1a1aa",
+    color: COLOR_ACTIVE,
   },
 });
