@@ -5,9 +5,9 @@ import Link from "next/link";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
 import { fetchWithAuth } from "@/utils/api";
+import CustomerNavbar from "../../components/CustomerNavbar";
 import {
   Wrench,
-  ArrowLeft,
   Car,
   Calendar,
   Clock,
@@ -262,7 +262,7 @@ export default function BookingPage() {
   }
 
   return (
-    <main className="relative min-h-screen flex flex-col md:flex-row text-[#111111] font-sans antialiased selection:bg-[#111111] selection:text-white">
+    <main className="relative min-h-screen text-[#111111] font-sans antialiased selection:bg-[#111111] selection:text-white">
       {/* BACKGROUND GAMBAR */}
       <div className="absolute inset-0 z-0 fixed pointer-events-none">
         <img
@@ -273,16 +273,12 @@ export default function BookingPage() {
         <div className="absolute inset-0 bg-[#F7F7F7]/90 backdrop-blur-md" />
       </div>
 
-      {/* SISI KIRI: DINAMIS (DAFTAR BENGKEL -> DAFTAR LAYANAN) */}
-      <section className="relative z-10 w-full md:w-5/12 bg-white/80 backdrop-blur-xl border-r border-[#E5E5E5] flex flex-col p-6 md:p-10 md:h-screen md:overflow-y-auto custom-scrollbar">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-xs font-semibold text-[#6B7280] hover:text-[#111111] mb-8 transition group w-fit"
-        >
-          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />{" "}
-          Kembali ke Beranda
-        </Link>
+      <CustomerNavbar user={user} activePage="booking" />
 
+      <div className="relative z-10 flex min-h-[calc(100vh-80px)] flex-col md:flex-row">
+
+      {/* SISI KIRI: DINAMIS (DAFTAR BENGKEL -> DAFTAR LAYANAN) */}
+      <section className="relative z-10 w-full md:w-5/12 bg-white/80 backdrop-blur-xl border-r border-[#E5E5E5] flex flex-col p-6 md:p-10 md:h-[calc(100vh-80px)] md:overflow-y-auto custom-scrollbar">
         <AnimatePresence mode="wait">
           {/* TAMPILAN 1: PILIH BENGKEL */}
           {!selectedBengkel ? (
@@ -395,7 +391,7 @@ export default function BookingPage() {
       </section>
 
       {/* SISI KANAN: FORM BOOKING */}
-      <section className="relative z-10 w-full md:w-7/12 flex items-center justify-center p-6 md:p-12 md:h-screen md:overflow-y-auto">
+      <section className="relative z-10 w-full md:w-7/12 flex items-center justify-center p-6 md:p-12 md:h-[calc(100vh-80px)] md:overflow-y-auto">
         <div className="w-full max-w-lg bg-white/90 backdrop-blur-2xl p-8 md:p-10 rounded-3xl border border-[#E5E5E5] shadow-2xl my-auto relative overflow-hidden">
           {/* Visual Efek */}
           <div className="absolute -top-32 -right-32 w-64 h-64 bg-[#111111]/5 rounded-full blur-[80px] pointer-events-none" />
@@ -532,6 +528,7 @@ export default function BookingPage() {
           </form>
         </div>
       </section>
+      </div>
     </main>
   );
 }

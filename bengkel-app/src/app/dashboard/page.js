@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import Swal from "sweetalert2";
 import EmptyState from "@/components/EmptyState";
+import CustomerNavbar from "../../components/CustomerNavbar";
 import { fetchWithAuth } from "@/utils/api";
 import {
   Wrench,
-  PlusCircle,
-  LogOut,
   Clock,
   Calendar,
   Car,
@@ -75,36 +73,6 @@ export default function UserDashboard() {
 
     return () => clearInterval(interval);
   }, [user]);
-
-  const clearAuthSession = () => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("user_session");
-    document.cookie = "user_role=; path=/; max-age=0";
-    document.cookie =
-      "user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-  };
-
-  const handleLogout = () => {
-    Swal.fire({
-      title: "Keluar Akun",
-      text: "Apakah kamu yakin ingin keluar dari sesi ini?",
-      icon: "warning",
-      iconColor: "#111111",
-      showCancelButton: true,
-      confirmButtonText: "Ya, Keluar",
-      cancelButtonText: "Batal",
-      confirmButtonColor: "#111111",
-      cancelButtonColor: "#9CA3AF",
-      background: "#FFFFFF",
-      color: "#111111",
-    }).then((result) => {
-      if (result.isConfirmed) {
-        clearAuthSession();
-        window.location.replace("/login");
-      }
-    });
-  };
 
   const handleCancelBooking = async (bookingId) => {
     const { value: cancelReason } = await Swal.fire({
@@ -348,38 +316,7 @@ export default function UserDashboard() {
         <div className="absolute inset-0 bg-gradient-to-b from-[#F7F7F7]/90 via-[#F7F7F7]/85 to-[#F7F7F7]/95 backdrop-blur-[6px]" />
       </div>
 
-      <header className="relative z-10 bg-white/80 backdrop-blur-xl border-b border-[#E5E5E5] shadow-[0_8px_30px_-12px_rgba(0,0,0,0.12)] sticky top-0">
-        <div className="max-w-6xl mx-auto px-6 py-5 flex justify-between items-center">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#111111] to-[#0A0A0A] flex items-center justify-center shadow-lg shadow-black/20 ring-1 ring-black/10">
-              <Wrench className="w-5 h-5 text-white" strokeWidth={2.25} />
-            </div>
-            <div>
-              <h1 className="text-base md:text-lg font-semibold tracking-tight text-[#111111]">
-                Halo, {user?.name}! 👋
-              </h1>
-              <p className="text-[#6B7280] text-xs font-mono mt-0.5 tracking-wide">
-                {user?.whatsapp}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/booking"
-              className="bg-[#111111] hover:bg-[#333333] active:scale-[0.98] text-white px-5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 shadow-lg shadow-black/20 hover:shadow-black/30 flex items-center gap-1.5"
-            >
-              <PlusCircle className="w-4 h-4" strokeWidth={2.25} /> Buat Booking
-            </Link>
-            <button
-              onClick={handleLogout}
-              className="bg-white hover:bg-[#F1F1F1] text-[#4B5563] hover:text-[#111111] px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 border border-[#E5E5E5] hover:border-[#9CA3AF] flex items-center gap-1 cursor-pointer"
-            >
-              <LogOut className="w-4 h-4" strokeWidth={2.25} /> Logout
-            </button>
-          </div>
-        </div>
-      </header>
+      <CustomerNavbar user={user} activePage="dashboard" />
 
       <div className="relative z-10 max-w-6xl mx-auto mt-10 px-6 space-y-8">
         <div className="bg-white/90 backdrop-blur-md rounded-2xl border border-[#E5E5E5] flex overflow-x-auto p-1.5 gap-1 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.1)] scrollbar-none">
