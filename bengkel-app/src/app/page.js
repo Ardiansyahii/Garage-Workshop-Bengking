@@ -198,19 +198,25 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      {/* 2. HERO BESAR (Sticky/Pinned untuk Overlapping efek) */}
+     {/* 2. HERO BESAR (Sticky/Pinned untuk Overlapping efek) */}
       <section
         ref={heroRef}
-        className="h-screen w-full flex flex-col justify-center px-6 md:px-20 relative z-0 bg-[#FAFAFA] border-b border-zinc-200"
+        className="min-h-screen lg:h-screen w-full flex flex-col justify-center px-6 md:px-20 relative z-0 bg-[#FAFAFA] border-b border-zinc-200 overflow-hidden"
       >
         <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-zinc-300/30 blur-[120px] rounded-full pointer-events-none"></div>
 
-        <div className="relative z-10 max-w-7xl mx-auto w-full flex flex-col justify-center mt-16 md:mt-24 h-full">
+        {/* Cahaya lembut di belakang visual kendaraan (sisi kanan) */}
+        <div className="hidden lg:block absolute top-1/2 right-[-5%] -translate-y-1/2 w-[55%] h-[70%] bg-white blur-[100px] rounded-full pointer-events-none"></div>
+
+        {/* Layout dua kolom: teks (kiri) + visual (kanan).
+            Mobile/tablet: teks -> gambar -> statistik, tersusun rapi ke bawah. */}
+        <div className="relative z-10 max-w-7xl mx-auto w-full pt-24 md:pt-28 lg:h-full grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-[1fr_auto] gap-x-4">
+          {/* Kolom kiri: teks */}
           <motion.div
             initial="hidden"
             animate="visible"
             variants={staggerChildren}
-            className="max-w-5xl"
+            className="max-w-5xl lg:self-center"
           >
             {/* Tagline / Badge */}
             <motion.div
@@ -221,7 +227,7 @@ export default function LandingPage() {
             {/* Judul */}
             <motion.h1
               variants={fadeUp}
-              className="text-5xl md:text-8xl font-black tracking-tighter leading-[0.9] mb-8 uppercase"
+              className="text-5xl md:text-7xl lg:text-6xl xl:text-7xl 2xl:text-8xl font-black tracking-tighter leading-[0.9] mb-8 uppercase"
             >
               Servis{" "}
               <span className="text-zinc-400 text-transparent bg-clip-text bg-gradient-to-b from-zinc-400 to-zinc-600">
@@ -257,12 +263,45 @@ export default function LandingPage() {
             </motion.button>
           </motion.div>
 
+          {/* Kolom kanan: visual kendaraan */}
+          <motion.div
+            initial={{ opacity: 0, x: 40, scale: 0.97 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            transition={{ duration: 0.9, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="relative mt-12 lg:mt-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 flex items-center justify-center"
+          >
+            <div className="relative w-full aspect-[16/10] lg:aspect-[16/9] lg:w-[145%] lg:-ml-[8%] pointer-events-none">
+              {/* Bayangan lantai halus agar kendaraan terasa menapak */}
+              <div className="absolute bottom-[22%] left-1/2 -translate-x-1/2 w-[80%] h-[10%] bg-zinc-400/25 blur-3xl rounded-full pointer-events-none"></div>
+
+              <Image
+                src="/assets/hero-vehicle.png"
+                alt="Mobil dan sepeda motor yang dapat diservis melalui BengkelKu"
+                fill
+                priority
+                quality={85}
+                sizes="(min-width: 1024px) 70vw, 100vw"
+                className="object-cover object-[50%_65%] scale-[1.28] mix-blend-multiply"
+                style={{
+                  // Feather semua sisi gambar sampai benar-benar transparan,
+                  // supaya tidak ada tepi kotak yang terlihat.
+                  WebkitMaskImage:
+                    "linear-gradient(to right, transparent 0%, black 22%, black 78%, transparent 100%), linear-gradient(to bottom, transparent 0%, black 25%, black 75%, transparent 100%)",
+                  maskImage:
+                    "linear-gradient(to right, transparent 0%, black 22%, black 78%, transparent 100%), linear-gradient(to bottom, transparent 0%, black 25%, black 75%, transparent 100%)",
+                  WebkitMaskComposite: "source-in",
+                  maskComposite: "intersect",
+                }}
+              />
+            </div>
+          </motion.div>
+
           {/* Statistik (Masuk ke dalam Hero) */}
           <motion.div
             initial="hidden"
             animate="visible"
             variants={staggerChildren}
-            className="grid grid-cols-2 md:grid-cols-3 gap-8 mt-16 md:mt-auto pb-10 border-t border-zinc-200 pt-8 w-full max-w-4xl"
+            className="grid grid-cols-2 md:grid-cols-3 gap-8 mt-10 lg:mt-0 pb-10 border-t border-zinc-200 pt-8 w-full max-w-4xl lg:col-start-1 lg:row-start-2"
           >
             <motion.div variants={fadeUp} className="space-y-1">
               <h3 className="text-3xl md:text-5xl font-black text-zinc-900">
