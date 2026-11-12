@@ -264,8 +264,14 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-zinc-700 mb-2 uppercase tracking-wider flex justify-between">
+              <label className="flex justify-between mb-2 text-xs font-bold uppercase tracking-wider text-zinc-700">
                 <span>Password</span>
+                <Link
+                  href="/forgotpassword"
+                  className="font-semibold normal-case text-zinc-500 transition hover:text-zinc-900 hover:underline"
+                >
+                  Lupa kata sandi?
+                </Link>
               </label>
               <div className="relative group">
                 <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-zinc-400 group-focus-within:text-zinc-900 transition-colors">
