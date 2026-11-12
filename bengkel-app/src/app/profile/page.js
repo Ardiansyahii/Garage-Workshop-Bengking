@@ -298,43 +298,59 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-[#F7F7F7]">
         <div className="h-9 w-9 animate-spin rounded-full border-[3px] border-zinc-200 border-t-zinc-900" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-100 text-zinc-900">
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-[#F7F7F7] text-zinc-900">
       <CustomerNavbar user={user} activePage="profile" />
 
-      <main className="mx-auto max-w-4xl px-6 pb-6 pt-10">
-        <h1 className="mb-6 text-[28px] font-black">Profil</h1>
+      <div className="pointer-events-none fixed inset-0 z-0">
+        <img src="/workshop-bg.png" alt="" aria-hidden="true" className="h-full w-full object-cover object-center grayscale brightness-[0.7] contrast-[0.95] saturate-0" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#F7F7F7]/90 via-[#F7F7F7]/85 to-[#F7F7F7]/95 backdrop-blur-[6px]" />
+      </div>
 
-        <div className="grid items-start gap-6 md:grid-cols-[300px_1fr]">
+      <main className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 pb-8 pt-8">
+        <div className="mb-7">
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-zinc-500">Pengaturan Akun</p>
+          <h1 className="text-3xl font-black tracking-tight md:text-4xl">Profil Saya</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-600">Kelola informasi akun dan keamanan profil Anda di satu tempat.</p>
+        </div>
+
+        <div className="grid flex-1 items-stretch gap-6 md:grid-cols-[minmax(300px,0.85fr)_minmax(0,1.6fr)]">
           {/* Kartu kiri: avatar */}
-          <section className="flex flex-col items-center rounded-3xl border border-zinc-200 bg-white p-6 text-center md:p-8">
-            <div className="mb-4 grid h-24 w-24 place-items-center rounded-full border border-zinc-200 bg-zinc-100 text-3xl font-extrabold">
+          <section className="flex min-h-[420px] flex-col items-center rounded-3xl border border-zinc-200/80 bg-white/95 p-7 text-center shadow-[0_20px_50px_-24px_rgba(0,0,0,0.2)] backdrop-blur-md md:p-10">
+            <div className="mb-5 grid h-32 w-32 place-items-center rounded-full border-4 border-white bg-zinc-900 text-4xl font-black text-white shadow-xl shadow-zinc-300">
               {getInitials(user?.name)}
             </div>
-            <h2 className="mb-2.5 break-words text-[22px] font-black text-zinc-700">{user?.name || '-'}</h2>
+            <h2 className="mb-3 break-words text-2xl font-black text-zinc-900">{user?.name || '-'}</h2>
             <span className={cx.badge}>
               <ShieldCheck size={14} />
               {user?.role ? capitalize(user.role) : '-'} · Apex Garage
             </span>
-            <button onClick={handleLogout} className={`${cx.btn} mt-6 w-full border border-zinc-300 bg-white text-red-600 hover:bg-red-50`}>
+            <p className="mt-6 max-w-xs text-sm leading-relaxed text-zinc-500">Profil Anda digunakan untuk mengelola reservasi dan informasi layanan.</p>
+            <button onClick={handleLogout} className={`${cx.btn} mt-auto w-full border border-zinc-300 bg-white text-red-600 hover:bg-red-50`}>
               <LogOut size={16} /> Keluar
             </button>
           </section>
 
           {/* Kartu kanan: informasi akun */}
-          <section className="rounded-3xl border border-zinc-200 bg-white p-6 md:p-8">
-            <h3 className="mb-5 text-lg font-extrabold">Informasi Akun</h3>
+          <section className="flex min-h-[420px] flex-col rounded-3xl border border-zinc-200/80 bg-white/95 p-7 shadow-[0_20px_50px_-24px_rgba(0,0,0,0.2)] backdrop-blur-md md:p-10">
+            <div className="mb-8 border-b border-zinc-100 pb-6">
+              <h3 className="text-xl font-extrabold">Informasi Akun</h3>
+              <p className="mt-2 text-sm text-zinc-500">Data yang terhubung dengan akun Bengkelku Anda.</p>
+            </div>
             <InfoField label="Nomor WhatsApp" icon={<Phone size={18} />} value={user?.whatsapp || '-'} />
             <InfoField label="Password" icon={<Lock size={18} />} value="••••••••" />
-            <button onClick={openEdit} className={`${cx.btn} mt-2 w-full bg-zinc-900 text-white hover:bg-zinc-700`}>
-              <Edit3 size={16} /> Edit Profil
-            </button>
+            <div className="mt-auto border-t border-zinc-100 pt-6">
+              <p className="mb-4 text-xs leading-relaxed text-zinc-500">Perubahan username atau password akan diverifikasi melalui kode OTP WhatsApp.</p>
+              <button onClick={openEdit} className={`${cx.btn} w-full bg-zinc-900 text-white hover:bg-zinc-700`}>
+                <Edit3 size={16} /> Edit Profil
+              </button>
+            </div>
           </section>
         </div>
 
