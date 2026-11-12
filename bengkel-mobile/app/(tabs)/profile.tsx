@@ -17,7 +17,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import BottomNavBar from "../../components/Bottomnavbar";
 import {
-  ChevronRight,
   Bell,
   User as UserIcon,
   Phone,
@@ -48,6 +47,20 @@ const STORAGE_KEYS = {
 };
 
 const OTP_LENGTH = 4;
+
+// Palet sama dengan halaman Forgot Password / Dashboard / Booking
+const COLORS = {
+  white: '#FFFFFF',
+  ink: '#18181b',
+  text: '#3f3f46',
+  sub: '#71717a',
+  mute: '#a1a1aa',
+  bg: '#f4f4f5',
+  line: '#e4e4e7',
+  line2: '#d4d4d8',
+  err: '#dc2626',
+  errBg: '#fef2f2',
+};
 
 // =====================================================================
 // TYPES — mengikuti payload backend
@@ -93,12 +106,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const [verifying, setVerifying] = useState(false);
   const [resending, setResending] = useState(false);
 
-  // Menyimpan apa saja yang sedang diubah (username / password / keduanya)
-  // supaya bisa ditampilkan sebagai keterangan di modal OTP.
-  const [pendingChanges, setPendingChanges] = useState<PendingChanges>({
-    name: false,
-    password: false,
-  });
+  // Perubahan yang sedang diajukan (ditampilkan sebagai badge di modal OTP)
+  const [pendingChanges, setPendingChanges] = useState<PendingChanges>({ name: false, password: false });
 
   const [formName, setFormName] = useState('');
   const [formPassword, setFormPassword] = useState('');
@@ -111,10 +120,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const [toast, setToast] = useState<ToastState>({ visible: false, message: '', type: 'success' });
   const toastAnim = useRef(new Animated.Value(0)).current;
 
-  // ---------------------------------------------------------------
   // Load user: prioritas AsyncStorage, lalu refresh dari API.
-  // Tidak ada data dummy — kalau API gagal tetap pakai data lokal.
-  // ---------------------------------------------------------------
   const loadUser = useCallback(async () => {
     try {
       setLoading(true);
@@ -213,12 +219,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     if (!validateForm() || !user) return;
     try {
       setSaving(true);
-
-      // Catat perubahan apa saja yang sedang diajukan, dipakai untuk
-      // menampilkan keterangan di modal OTP.
-      const changingName = formName.trim() !== user.name;
-      const changingPassword = !!formPassword;
-      setPendingChanges({ name: changingName, password: changingPassword });
+      setPendingChanges({ name: formName.trim() !== user.name, password: !!formPassword });
 
       await requestOtp();
       setFormOtp('');
@@ -303,48 +304,46 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formOtp, otpModalVisible]);
 
- // Proses logout yang sebenarnya (dipakai web & native)
-const performLogout = async () => {
-  try {
-    await AsyncStorage.multiRemove([
-      STORAGE_KEYS.TOKEN,
-      STORAGE_KEYS.AUTH_TOKEN,
-      STORAGE_KEYS.USER,
-      STORAGE_KEYS.USER_SESSION,
-    ]);
-  } catch (err) {
-    console.warn('Gagal menghapus sesi lokal:', err);
-  } finally {
-    // tetap redirect walaupun penghapusan storage error
-    router.replace('/');
-  }
-};
+  // Proses logout yang sebenarnya (dipakai web & native)
+  const performLogout = async () => {
+    try {
+      await AsyncStorage.multiRemove([
+        STORAGE_KEYS.TOKEN,
+        STORAGE_KEYS.AUTH_TOKEN,
+        STORAGE_KEYS.USER,
+        STORAGE_KEYS.USER_SESSION,
+      ]);
+    } catch (err) {
+      console.warn('Gagal menghapus sesi lokal:', err);
+    } finally {
+      router.replace('/');
+    }
+  };
 
-const handleLogout = () => {
-  // Alert.alert dengan tombol tidak berfungsi di React Native Web
-  if (Platform.OS === 'web') {
-    const confirmed =
-      typeof window !== 'undefined' &&
-      window.confirm('Apakah Anda yakin ingin keluar dari akun?');
-    if (confirmed) performLogout();
-    return;
-  }
+  const handleLogout = () => {
+    // Alert.alert dengan tombol tidak berfungsi di React Native Web
+    if (Platform.OS === 'web') {
+      const confirmed =
+        typeof window !== 'undefined' && window.confirm('Apakah Anda yakin ingin keluar dari akun?');
+      if (confirmed) performLogout();
+      return;
+    }
 
-  Alert.alert(
-    'Konfirmasi Logout',
-    'Apakah Anda yakin ingin keluar dari akun?',
-    [
-      { text: 'Batal', style: 'cancel' },
-      { text: 'Keluar', style: 'destructive', onPress: performLogout },
-    ],
-    { cancelable: true },
-  );
-};
+    Alert.alert(
+      'Konfirmasi Logout',
+      'Apakah Anda yakin ingin keluar dari akun?',
+      [
+        { text: 'Batal', style: 'cancel' },
+        { text: 'Keluar', style: 'destructive', onPress: performLogout },
+      ],
+      { cancelable: true },
+    );
+  };
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.red} />
+        <ActivityIndicator size="large" color={COLORS.ink} />
         <BottomNavBar activeTab="profile" />
       </View>
     );
@@ -359,76 +358,52 @@ const handleLogout = () => {
       ? 'Password'
       : null;
 
+  const eye = (visible: boolean, toggle: () => void) => (
+    <TouchableOpacity onPress={toggle} hitSlop={8}>
+      {visible ? <EyeOff color={COLORS.sub} size={18} /> : <Eye color={COLORS.sub} size={18} />}
+    </TouchableOpacity>
+  );
+
   return (
     <View style={styles.container}>
-      {/* ============ HEADER ============ */}
-      <View style={styles.header}>
-        <View style={styles.headerSideSpacer} />
-        <Text style={styles.headerTitle}>Profile</Text>
-        <TouchableOpacity style={styles.notifButton} activeOpacity={0.7}>
-          <Bell color={COLORS.red} size={19} />
-          <View style={styles.notifDot} />
-        </TouchableOpacity>
-      </View>
-
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* ============ AVATAR + NAME ============ */}
+        {/* ============ HEADER ============ */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Profil</Text>
+          <TouchableOpacity style={styles.notifButton} activeOpacity={0.7}>
+            <Bell color={COLORS.ink} size={18} />
+            <View style={styles.notifDot} />
+          </TouchableOpacity>
+        </View>
+
+        {/* ============ AVATAR + NAMA ============ */}
         <View style={styles.avatarSection}>
-          <View style={styles.avatarGlowOuter}>
-            <View style={styles.avatarGlowInner}>
-              <View style={styles.avatarCircle}>
-                <Text style={styles.avatarText}>{getInitials(user?.name)}</Text>
-              </View>
-            </View>
+          <View style={styles.avatarCircle}>
+            <Text style={styles.avatarText}>{getInitials(user?.name)}</Text>
           </View>
           <Text style={styles.userName}>{user?.name || '-'}</Text>
-          <Text style={styles.userSubtitle}>
-            {user?.role ? capitalize(user.role) : '-'} · Apex Garage
-          </Text>
+          <View style={styles.badge}>
+            <ShieldCheck color={COLORS.ink} size={14} />
+            <Text style={styles.badgeText}>{user?.role ? capitalize(user.role) : '-'} · Apex Garage</Text>
+          </View>
         </View>
 
-        {/* ============ PERSONAL INFORMATION ============ */}
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionLabel}>Personal Information</Text>
-          <TouchableOpacity style={styles.editLink} onPress={openEditModal} activeOpacity={0.7}>
-            <Edit3 color={COLORS.red} size={14} />
-            <Text style={styles.editLinkText}>Edit</Text>
-          </TouchableOpacity>
-        </View>
+        {/* ============ INFORMASI AKUN ============ */}
+        <InfoField label="Nomor WhatsApp" icon={<Phone color={COLORS.mute} size={18} />} value={user?.whatsapp || '-'} />
+        <InfoField label="Password" icon={<Lock color={COLORS.mute} size={18} />} value="••••••••" />
 
-        <View style={styles.infoCard}>
-          <InfoRow icon={<Phone color={COLORS.red} size={16} />} label="WhatsApp" value={user?.whatsapp || '-'} />
-          <View style={styles.divider} />
-          <InfoRow icon={<Lock color={COLORS.red} size={16} />} label="Password" value="••••••••" isLast />
-        </View>
+        {/* ============ AKSI ============ */}
+        <TouchableOpacity style={styles.primaryBtn} onPress={openEditModal} activeOpacity={0.85}>
+          <Edit3 color={COLORS.white} size={16} />
+          <Text style={styles.primaryBtnText}>Edit Profil</Text>
+        </TouchableOpacity>
 
-        {/* ============ ACCOUNT ACTIONS ============ */}
-        <Text style={[styles.sectionLabel, { marginTop: 26 }]}>Account Actions</Text>
-        <View style={styles.utilityCard}>
-          <TouchableOpacity style={styles.utilityRow} onPress={openEditModal} activeOpacity={0.7}>
-            <View style={styles.utilityLeft}>
-              <View style={styles.utilityIconWrap}>
-                <Edit3 color={COLORS.red} size={16} />
-              </View>
-              <Text style={styles.utilityText}>Edit Profile</Text>
-            </View>
-            <ChevronRight color={COLORS.red} size={18} />
-          </TouchableOpacity>
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.7}>
+          <LogOut color={COLORS.err} size={16} />
+          <Text style={styles.logoutBtnText}>Keluar</Text>
+        </TouchableOpacity>
 
-          <View style={styles.divider} />
-
-          <TouchableOpacity style={styles.utilityRow} onPress={handleLogout} activeOpacity={0.7}>
-            <View style={styles.utilityLeft}>
-              <View style={styles.utilityIconWrap}>
-                <LogOut color={COLORS.red} size={16} />
-              </View>
-              <Text style={[styles.utilityText, { color: COLORS.red }]}>Log-Out</Text>
-            </View>
-            <ChevronRight color={COLORS.red} size={18} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={{ height: 40 }} />
+        <Text style={styles.copyright}>© {new Date().getFullYear()} APEX GARAGE. System Access.</Text>
       </ScrollView>
 
       {/* ============ MODAL 1: EDIT PROFILE ============ */}
@@ -436,16 +411,16 @@ const handleLogout = () => {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Edit Profile</Text>
+              <Text style={styles.modalTitle}>Edit Profil</Text>
               <TouchableOpacity onPress={closeEditModal} disabled={saving} hitSlop={10}>
-                <X color={COLORS.white} size={20} />
+                <X color={COLORS.sub} size={20} />
               </TouchableOpacity>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
               <FormField
                 label="Username"
-                icon={<UserIcon color={COLORS.textMuted} size={16} />}
+                icon={<UserIcon size={18} />}
                 value={formName}
                 onChangeText={setFormName}
                 placeholder="Nama lengkap"
@@ -453,65 +428,44 @@ const handleLogout = () => {
               />
               <FormField
                 label="Password Baru (opsional)"
-                icon={<Lock color={COLORS.textMuted} size={16} />}
+                icon={<Lock size={18} />}
                 value={formPassword}
                 onChangeText={setFormPassword}
                 placeholder="Kosongkan jika tidak diubah"
                 secureTextEntry={!showPassword}
                 error={formErrors.password}
-                rightIcon={
-                  <TouchableOpacity onPress={() => setShowPassword((v) => !v)}>
-                    {showPassword ? (
-                      <EyeOff color={COLORS.textMuted} size={16} />
-                    ) : (
-                      <Eye color={COLORS.textMuted} size={16} />
-                    )}
-                  </TouchableOpacity>
-                }
+                rightIcon={eye(showPassword, () => setShowPassword((v) => !v))}
               />
               {formPassword ? (
                 <FormField
                   label="Konfirmasi Password"
-                  icon={<Lock color={COLORS.textMuted} size={16} />}
+                  icon={<Lock size={18} />}
                   value={formConfirmPassword}
                   onChangeText={setFormConfirmPassword}
                   placeholder="Ulangi password baru"
                   secureTextEntry={!showConfirmPassword}
                   error={formErrors.confirmPassword}
-                  rightIcon={
-                    <TouchableOpacity onPress={() => setShowConfirmPassword((v) => !v)}>
-                      {showConfirmPassword ? (
-                        <EyeOff color={COLORS.textMuted} size={16} />
-                      ) : (
-                        <Eye color={COLORS.textMuted} size={16} />
-                      )}
-                    </TouchableOpacity>
-                  }
+                  rightIcon={eye(showConfirmPassword, () => setShowConfirmPassword((v) => !v))}
                 />
               ) : null}
             </ScrollView>
 
             <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={closeEditModal}
-                disabled={saving}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.cancelButtonText}>Batal</Text>
+              <TouchableOpacity style={[styles.modalBtn, styles.cancelBtn]} onPress={closeEditModal} disabled={saving} activeOpacity={0.7}>
+                <Text style={styles.cancelBtnText}>Batal</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalButton, styles.saveButton]}
+                style={[styles.modalBtn, styles.saveBtn, saving && styles.disabledBtn]}
                 onPress={handleSubmitEdit}
                 disabled={saving}
-                activeOpacity={0.8}
+                activeOpacity={0.85}
               >
                 {saving ? (
                   <ActivityIndicator size="small" color={COLORS.white} />
                 ) : (
                   <>
                     <Check color={COLORS.white} size={16} />
-                    <Text style={styles.saveButtonText}>Kirim OTP</Text>
+                    <Text style={styles.saveBtnText}>Kirim OTP</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -520,25 +474,21 @@ const handleLogout = () => {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* ============ MODAL 2: VERIFIKASI OTP (terpisah, kotak per digit) ============ */}
+      {/* ============ MODAL 2: VERIFIKASI OTP ============ */}
       <Modal visible={otpModalVisible} transparent animationType="fade" onRequestClose={closeOtpModal}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <ShieldCheck color={COLORS.red} size={18} />
-                <Text style={styles.modalTitle}>Verifikasi OTP</Text>
-              </View>
+              <Text style={styles.modalTitle}>Verifikasi OTP</Text>
               <TouchableOpacity onPress={closeOtpModal} disabled={verifying || resending} hitSlop={10}>
-                <X color={COLORS.white} size={20} />
+                <X color={COLORS.sub} size={20} />
               </TouchableOpacity>
             </View>
 
-            {/* Keterangan perubahan yang sedang diproses */}
             {pendingLabel ? (
-              <View style={styles.pendingBadge}>
-                <Edit3 color={COLORS.red} size={13} />
-                <Text style={styles.pendingBadgeText}>Sedang mengganti {pendingLabel}</Text>
+              <View style={[styles.badge, { marginBottom: 12 }]}>
+                <Edit3 color={COLORS.ink} size={13} />
+                <Text style={styles.badgeText}>Sedang mengganti {pendingLabel}</Text>
               </View>
             ) : null}
 
@@ -551,33 +501,35 @@ const handleLogout = () => {
 
             <TouchableOpacity onPress={handleResendOtp} disabled={resending || verifying} style={styles.resendRow}>
               {resending ? (
-                <ActivityIndicator size="small" color={COLORS.red} />
+                <ActivityIndicator size="small" color={COLORS.ink} />
               ) : (
-                <Text style={styles.resendText}>Tidak menerima kode? Kirim Ulang</Text>
+                <Text style={styles.resendText}>
+                  Tidak menerima kode? <Text style={styles.resendHighlight}>Kirim Ulang</Text>
+                </Text>
               )}
             </TouchableOpacity>
 
             <View style={styles.modalActions}>
               <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
+                style={[styles.modalBtn, styles.cancelBtn]}
                 onPress={closeOtpModal}
                 disabled={verifying || resending}
-                activeOpacity={0.8}
+                activeOpacity={0.7}
               >
-                <Text style={styles.cancelButtonText}>Batal</Text>
+                <Text style={styles.cancelBtnText}>Batal</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalButton, styles.saveButton]}
+                style={[styles.modalBtn, styles.saveBtn, (verifying || resending) && styles.disabledBtn]}
                 onPress={handleVerifyOtp}
                 disabled={verifying || resending}
-                activeOpacity={0.8}
+                activeOpacity={0.85}
               >
                 {verifying ? (
                   <ActivityIndicator size="small" color={COLORS.white} />
                 ) : (
                   <>
                     <Check color={COLORS.white} size={16} />
-                    <Text style={styles.saveButtonText}>Verifikasi</Text>
+                    <Text style={styles.saveBtnText}>Verifikasi</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -598,7 +550,7 @@ const handleLogout = () => {
             },
           ]}
         >
-          <Text style={styles.toastText}>{toast.message}</Text>
+          <Text style={[styles.toastText, toast.type === 'error' && { color: COLORS.err }]}>{toast.message}</Text>
         </Animated.View>
       )}
       <BottomNavBar activeTab="profile" />
@@ -620,29 +572,26 @@ const capitalize = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : 
 // =====================================================================
 // SUB COMPONENTS
 // =====================================================================
-const InfoRow: React.FC<{ icon: React.ReactNode; label: string; value: string; isLast?: boolean }> = ({
-  icon,
-  label,
-  value,
-}) => (
-  <View style={styles.infoRow}>
-    <View style={styles.infoIconWrap}>{icon}</View>
-    <Text style={styles.infoLabel}>{label}</Text>
-    <Text style={styles.infoValue} numberOfLines={1}>
-      {value}
-    </Text>
+// Kolom info read-only (gaya input Forgot Password)
+const InfoField: React.FC<{ label: string; icon: React.ReactNode; value: string }> = ({ label, icon, value }) => (
+  <View style={styles.fieldWrapper}>
+    <Text style={styles.fieldLabel}>{label}</Text>
+    <View style={styles.inputWrapper}>
+      {icon}
+      <Text style={styles.infoValue} numberOfLines={1}>
+        {value}
+      </Text>
+    </View>
   </View>
 );
 
 interface FormFieldProps {
   label: string;
-  icon: React.ReactNode;
+  icon: React.ReactElement;
   value: string;
   onChangeText: (t: string) => void;
   placeholder?: string;
   secureTextEntry?: boolean;
-  keyboardType?: any;
-  autoCapitalize?: any;
   error?: string;
   rightIcon?: React.ReactNode;
 }
@@ -654,30 +603,31 @@ const FormField: React.FC<FormFieldProps> = ({
   onChangeText,
   placeholder,
   secureTextEntry,
-  keyboardType,
-  autoCapitalize,
   error,
   rightIcon,
-}) => (
-  <View style={styles.fieldWrapper}>
-    <Text style={styles.fieldLabel}>{label}</Text>
-    <View style={[styles.inputWrapper, error ? styles.inputError : null]}>
-      {icon}
-      <TextInput
-        style={styles.input}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={COLORS.textMuted}
-        secureTextEntry={secureTextEntry}
-        keyboardType={keyboardType}
-        autoCapitalize={autoCapitalize}
-      />
-      {rightIcon}
+}) => {
+  const [focused, setFocused] = useState(false);
+  return (
+    <View style={styles.fieldWrapper}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <View style={[styles.inputWrapper, focused && styles.inputFocused, error ? styles.inputError : null]}>
+        {React.cloneElement(icon, { color: focused ? COLORS.ink : COLORS.mute })}
+        <TextInput
+          style={styles.input}
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={COLORS.mute}
+          secureTextEntry={secureTextEntry}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+        />
+        {rightIcon}
+      </View>
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
-    {error ? <Text style={styles.errorText}>{error}</Text> : null}
-  </View>
-);
+  );
+};
 
 // Kotak OTP terpisah per digit (4 kotak), dengan auto-focus & backspace ke kotak sebelumnya.
 interface OtpBoxInputProps {
@@ -689,6 +639,7 @@ interface OtpBoxInputProps {
 
 const OtpBoxInput: React.FC<OtpBoxInputProps> = ({ value, onChange, error, disabled }) => {
   const inputRefs = useRef<Array<TextInput | null>>([]);
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const digits = Array.from({ length: OTP_LENGTH }, (_, i) => value[i] || '');
 
   const handleChangeDigit = (text: string, index: number) => {
@@ -701,7 +652,7 @@ const OtpBoxInput: React.FC<OtpBoxInputProps> = ({ value, onChange, error, disab
       return;
     }
 
-    // Kalau user paste beberapa digit sekaligus ke satu kotak
+    // Paste beberapa digit sekaligus ke satu kotak
     if (clean.length > 1) {
       const pasted = clean.slice(0, OTP_LENGTH).split('');
       const next = digits.slice();
@@ -709,17 +660,14 @@ const OtpBoxInput: React.FC<OtpBoxInputProps> = ({ value, onChange, error, disab
         if (index + i < OTP_LENGTH) next[index + i] = d;
       });
       onChange(next.join(''));
-      const lastFilled = Math.min(index + pasted.length, OTP_LENGTH - 1);
-      inputRefs.current[lastFilled]?.focus();
+      inputRefs.current[Math.min(index + pasted.length, OTP_LENGTH - 1)]?.focus();
       return;
     }
 
     const next = digits.slice();
     next[index] = clean;
     onChange(next.join(''));
-    if (index < OTP_LENGTH - 1) {
-      inputRefs.current[index + 1]?.focus();
-    }
+    if (index < OTP_LENGTH - 1) inputRefs.current[index + 1]?.focus();
   };
 
   const handleKeyPress = (e: any, index: number) => {
@@ -736,10 +684,17 @@ const OtpBoxInput: React.FC<OtpBoxInputProps> = ({ value, onChange, error, disab
           ref={(ref) => {
             inputRefs.current[i] = ref;
           }}
-          style={[styles.otpBox, error ? styles.otpBoxError : null, digit ? styles.otpBoxFilled : null]}
+          style={[
+            styles.otpBox,
+            digit ? styles.otpBoxFilled : null,
+            focusedIndex === i ? styles.otpBoxFocused : null,
+            error ? styles.otpBoxError : null,
+          ]}
           value={digit}
           onChangeText={(t) => handleChangeDigit(t, i)}
           onKeyPress={(e) => handleKeyPress(e, i)}
+          onFocus={() => setFocusedIndex(i)}
+          onBlur={() => setFocusedIndex((prev) => (prev === i ? null : prev))}
           keyboardType="number-pad"
           maxLength={i === 0 ? OTP_LENGTH : 1}
           editable={!disabled}
@@ -752,251 +707,147 @@ const OtpBoxInput: React.FC<OtpBoxInputProps> = ({ value, onChange, error, disab
 };
 
 // =====================================================================
-// THEME — black background, improved glowing red accent
+// STYLES
 // =====================================================================
-const COLORS = {
-  bg: '#08080A',
-  card: '#131316',
-  cardAlt: '#17171B',
-  border: 'rgba(255,255,255,0.06)',
-  red: '#FF3B4E',
-  redSoft: 'rgba(255,59,78,0.14)',
-  redGlow: 'rgba(255,59,78,0.35)',
-  white: '#F5F5F7',
-  text: '#EDEDEF',
-  textMuted: '#8A8A93',
-};
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.bg },
-  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.bg },
+  container: { flex: 1, backgroundColor: COLORS.white },
+  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.white },
 
-  header: {
+  scrollContent: {
+    width: '100%',
+    maxWidth: 420,
+    alignSelf: 'center',
+    paddingHorizontal: 24,
     paddingTop: Platform.OS === 'ios' ? 54 : 40,
-    paddingBottom: 14,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    paddingBottom: 120,
   },
-  headerSideSpacer: { width: 34 },
-  headerTitle: { flex: 1, textAlign: 'center', color: COLORS.white, fontSize: 16, fontWeight: '700', letterSpacing: 0.3 },
+
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
+  headerTitle: { color: COLORS.ink, fontSize: 22, fontWeight: '900' },
   notifButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: COLORS.redSoft,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: COLORS.bg,
+    borderWidth: 1,
+    borderColor: COLORS.line,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  notifDot: {
-    position: 'absolute',
-    top: 6,
-    right: 7,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: COLORS.red,
-  },
-
-  scrollContent: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 120 },
+  notifDot: { position: 'absolute', top: 9, right: 10, width: 7, height: 7, borderRadius: 4, backgroundColor: COLORS.err },
 
   avatarSection: { alignItems: 'center', marginBottom: 28 },
-  avatarGlowOuter: {
-    width: 132,
-    height: 132,
-    borderRadius: 66,
-    backgroundColor: COLORS.redGlow,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: COLORS.red,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.55,
-    shadowRadius: 22,
-    elevation: 12,
-  },
-  avatarGlowInner: {
-    width: 112,
-    height: 112,
-    borderRadius: 56,
-    backgroundColor: COLORS.bg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: COLORS.red,
-  },
   avatarCircle: {
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: COLORS.card,
+    backgroundColor: COLORS.bg,
+    borderWidth: 1,
+    borderColor: COLORS.line,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 18,
   },
-  avatarText: { color: COLORS.red, fontSize: 30, fontWeight: '700' },
-  userName: { fontSize: 21, fontWeight: '700', color: COLORS.white, marginTop: 16 },
-  userSubtitle: { fontSize: 13, color: COLORS.textMuted, marginTop: 4 },
+  avatarText: { color: COLORS.ink, fontSize: 30, fontWeight: '800' },
+  userName: { color: COLORS.text, fontSize: 26, fontWeight: '900', textAlign: 'center', marginBottom: 10 },
 
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  sectionLabel: { fontSize: 15, fontWeight: '700', color: COLORS.white },
-  editLink: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  editLinkText: { color: COLORS.red, fontWeight: '700', fontSize: 13.5 },
-
-  infoCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  infoRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, gap: 12 },
-  infoIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.redSoft,
-    borderWidth: 1,
-    borderColor: 'rgba(255,59,78,0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  infoLabel: { fontSize: 13.5, color: COLORS.textMuted, flex: 1 },
-  infoValue: { fontSize: 14, color: COLORS.text, fontWeight: '600', maxWidth: 170, textAlign: 'right' },
-  divider: { height: 1, backgroundColor: COLORS.border },
-
-  utilityCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  utilityRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 15 },
-  utilityLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  utilityIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.redSoft,
-    borderWidth: 1,
-    borderColor: 'rgba(255,59,78,0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  utilityText: { fontSize: 14.5, fontWeight: '600', color: COLORS.text },
-
-  // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.72)', justifyContent: 'center', paddingHorizontal: 18 },
-  modalCard: {
-    backgroundColor: COLORS.cardAlt,
-    borderRadius: 22,
-    padding: 20,
-    maxHeight: '85%',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
-  modalTitle: { fontSize: 17, fontWeight: '700', color: COLORS.white },
-
-  // Badge keterangan "sedang mengganti username/password"
-  pendingBadge: {
+  badge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    alignSelf: 'flex-start',
-    backgroundColor: COLORS.redSoft,
+    alignSelf: 'center',
+    backgroundColor: COLORS.bg,
     borderWidth: 1,
-    borderColor: 'rgba(255,59,78,0.3)',
-    borderRadius: 20,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    marginBottom: 12,
+    borderColor: COLORS.line,
+    borderRadius: 999,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
   },
-  pendingBadgeText: { color: COLORS.red, fontSize: 12.5, fontWeight: '700' },
+  badgeText: { color: COLORS.ink, fontSize: 12, fontWeight: '600' },
 
-  otpHelperText: { fontSize: 13, color: COLORS.textMuted, marginBottom: 18, lineHeight: 18 },
-
-  // Kotak-kotak OTP
-  otpBoxRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 12,
-    marginBottom: 6,
-  },
-  otpBox: {
-    width: 54,
-    height: 58,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.card,
-    color: COLORS.white,
-    fontSize: 22,
-    fontWeight: '700',
-  },
-  otpBoxFilled: { borderColor: COLORS.red },
-  otpBoxError: { borderColor: COLORS.red, backgroundColor: '#2A0E12' },
-
-  resendRow: { alignItems: 'center', marginTop: 14, marginBottom: 4, paddingVertical: 6 },
-  resendText: { color: COLORS.red, fontSize: 13, fontWeight: '600' },
-
-  fieldWrapper: { marginBottom: 14 },
-  fieldLabel: { fontSize: 12.5, fontWeight: '600', color: COLORS.textMuted, marginBottom: 6 },
+  fieldWrapper: { marginBottom: 16 },
+  fieldLabel: { color: COLORS.text, fontSize: 13, fontWeight: '600', marginBottom: 8 },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    borderWidth: 1.3,
-    borderColor: COLORS.border,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    backgroundColor: COLORS.card,
+    gap: 8,
+    minHeight: 54,
+    paddingHorizontal: 16,
+    backgroundColor: COLORS.bg,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+    borderRadius: 16,
   },
-  inputError: { borderColor: COLORS.red },
-  input: { flex: 1, paddingVertical: 11, fontSize: 14, color: COLORS.white },
-  errorText: { color: COLORS.red, fontSize: 11.5, marginTop: 4 },
+  inputFocused: { backgroundColor: COLORS.white, borderColor: COLORS.ink },
+  inputError: { backgroundColor: COLORS.errBg, borderColor: COLORS.err },
+  input: { flex: 1, color: COLORS.ink, fontSize: 14, paddingVertical: 14 },
+  infoValue: { flex: 1, color: COLORS.ink, fontSize: 14, fontWeight: '600' },
+  errorText: { color: COLORS.err, fontSize: 12, marginTop: 6 },
 
-  modalActions: { flexDirection: 'row', gap: 10, marginTop: 16 },
-  modalButton: {
-    flex: 1,
+  primaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 13,
-    borderRadius: 13,
+    gap: 8,
+    height: 54,
+    borderRadius: 999,
+    backgroundColor: COLORS.ink,
+    marginTop: 8,
   },
-  cancelButton: { backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border },
-  cancelButtonText: { color: COLORS.white, fontWeight: '700', fontSize: 14 },
-  saveButton: {
-    backgroundColor: COLORS.red,
-    shadowColor: COLORS.red,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 6,
+  primaryBtnText: { color: COLORS.white, fontSize: 15, fontWeight: '600' },
+  logoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 54,
+    borderRadius: 999,
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.line2,
+    marginTop: 12,
   },
-  saveButtonText: { color: COLORS.white, fontWeight: '700', fontSize: 14 },
+  logoutBtnText: { color: COLORS.err, fontSize: 15, fontWeight: '600' },
+  copyright: { color: COLORS.mute, fontSize: 10, textAlign: 'center', marginTop: 24 },
+
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', paddingHorizontal: 20 },
+  modalCard: { width: '100%', maxWidth: 420, alignSelf: 'center', backgroundColor: COLORS.white, borderRadius: 28, padding: 24, maxHeight: '85%' },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  modalTitle: { color: COLORS.ink, fontSize: 22, fontWeight: '800' },
+  modalActions: { flexDirection: 'row', gap: 10, marginTop: 8 },
+  modalBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 52, borderRadius: 999 },
+  cancelBtn: { backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.line2 },
+  cancelBtnText: { color: COLORS.ink, fontSize: 14, fontWeight: '600' },
+  saveBtn: { backgroundColor: COLORS.ink },
+  saveBtnText: { color: COLORS.white, fontSize: 14, fontWeight: '600' },
+  disabledBtn: { backgroundColor: COLORS.mute },
+
+  otpHelperText: { color: COLORS.sub, fontSize: 13, lineHeight: 19, marginBottom: 18 },
+  otpBoxRow: { flexDirection: 'row', justifyContent: 'center', gap: 12, marginVertical: 4 },
+  otpBox: {
+    width: 56,
+    height: 60,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+    backgroundColor: COLORS.bg,
+    color: COLORS.ink,
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  otpBoxFilled: { borderColor: COLORS.line2 },
+  otpBoxFocused: { backgroundColor: COLORS.white, borderColor: COLORS.ink },
+  otpBoxError: { backgroundColor: COLORS.errBg, borderColor: COLORS.err },
+  resendRow: { alignItems: 'center', marginTop: 14, marginBottom: 8, paddingVertical: 4 },
+  resendText: { color: COLORS.sub, fontSize: 13 },
+  resendHighlight: { color: COLORS.ink, fontWeight: '700', textDecorationLine: 'underline' },
 
   // Toast
-  toast: {
-    position: 'absolute',
-    bottom: 110,
-    left: 20,
-    right: 20,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    borderWidth: 1,
-  },
-  toastSuccess: { backgroundColor: COLORS.cardAlt, borderColor: 'rgba(255,59,78,0.4)' },
-  toastError: { backgroundColor: '#2A0E12', borderColor: COLORS.red },
-  toastText: { color: COLORS.white, fontWeight: '600', fontSize: 13.5, textAlign: 'center' },
+  toast: { position: 'absolute', bottom: 110, left: 20, right: 20, borderRadius: 16, paddingVertical: 14, paddingHorizontal: 18, borderWidth: 1 },
+  toastSuccess: { backgroundColor: COLORS.white, borderColor: COLORS.line2 },
+  toastError: { backgroundColor: COLORS.errBg, borderColor: COLORS.err },
+  toastText: { color: COLORS.ink, fontWeight: '600', fontSize: 13.5, textAlign: 'center' },
 });
 
 export default ProfileScreen;

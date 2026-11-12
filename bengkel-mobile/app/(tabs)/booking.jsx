@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -33,6 +33,7 @@ import {
 import BottomNavBar from "../../components/Bottomnavbar";
 import { useFocusEffect } from "expo-router";
 import { useCallback } from "react";
+import DateTimePicker from "@react-native-community/datetimepicker";
 // Samakan dengan API_URL di Login/Register/Verify/Dashboard screen kamu
 const API_URL = Platform.select({
   web: "http://localhost:5000",
@@ -41,6 +42,22 @@ const API_URL = Platform.select({
 });
 
 const DAYS = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+
+// Helper format tanggal/jam dari picker (pakai waktu lokal agar tidak bergeser zona waktu)
+const pad = (n) => String(n).padStart(2, "0");
+const toDateStr = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const toTimeStr = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+// Input native browser (type="date" / "time") untuk platform web
+const WebInput = ({ inputRef, ...props }) =>
+  React.createElement("input", {
+    ref: inputRef,
+    ...props,
+    style: {
+      flex: 1, minWidth: 0, border: "none", outline: "none", background: "transparent",
+      color: "#18181b", fontSize: 13, padding: "12px 0", fontFamily: "inherit",
+    },
+  });
 
 // Helper format harga ke Rupiah
 const formatRupiah = (value) => {
@@ -83,6 +100,12 @@ export default function BookingScreen() {
   // State Konfirmasi Layanan (muncul sebelum lanjut ke form, HANYA untuk alur pilih manual)
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [pendingService, setPendingService] = useState(null);
+
+  // State Picker Tanggal / Jam
+  const [picker, setPicker] = useState(null); // "date" | "time" | null
+  const [tempValue, setTempValue] = useState(new Date()); // dipakai picker iOS
+  const dateInputRef = useRef(null); // web
+  const timeInputRef = useRef(null); // web
 
   // State Form
   const [formData, setFormData] = useState({
@@ -308,6 +331,39 @@ export default function BookingScreen() {
     }
   };
 
+  // 5b. Picker tanggal/jam (tanpa mengetik) — tetap lewat validateDate / validateTime
+  const openPicker = (mode) => {
+    if (mode === "time" && !formData.booking_date) {
+      Alert.alert("Pilih Tanggal Dulu", "Silakan tentukan tanggal servis terlebih dahulu.");
+      return;
+    }
+    if (Platform.OS === "web") {
+      (mode === "date" ? dateInputRef : timeInputRef).current?.showPicker?.();
+      return;
+    }
+    setTempValue(new Date());
+    setPicker(mode);
+  };
+
+  const applyPicked = (mode, d) =>
+    mode === "date" ? validateDate(toDateStr(d)) : validateTime(toTimeStr(d));
+
+  const handlePickerChange = (event, selected) => {
+    if (Platform.OS === "android") {
+      const mode = picker;
+      setPicker(null);
+      if (event.type === "set" && selected) applyPicked(mode, selected);
+    } else if (selected) {
+      setTempValue(selected);
+    }
+  };
+
+  const handleIosPickerDone = () => {
+    const mode = picker;
+    setPicker(null);
+    applyPicked(mode, tempValue);
+  };
+
   // 6. Submit Data ke Backend
   const handleSubmit = async () => {
     if (!selectedBengkel || !formData.service_id) {
@@ -356,7 +412,7 @@ export default function BookingScreen() {
   if (isLoading || !user) {
     return (
       <View style={styles.loadingContainer}>
-        <Wrench size={32} color="#dc2626" />
+        <Wrench size={32} color="#18181b" />
         <Text style={styles.loadingText}>Menyiapkan Ruang Reservasi...</Text>
       </View>
     );
@@ -364,7 +420,7 @@ export default function BookingScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -375,7 +431,7 @@ export default function BookingScreen() {
         style={styles.backBtn}
         onPress={() => router.replace("/dashboard")}
       >
-        <ArrowLeft size={14} color="#a1a1aa" />
+        <ArrowLeft size={14} color="#52525b" />
         <Text style={styles.backBtnText}>Kembali</Text>
       </TouchableOpacity>
 
@@ -420,7 +476,7 @@ export default function BookingScreen() {
         ) : (
           /* ============ STEP 2: LAYANAN + FORM ============ */
           <View>
-            <Text style={[styles.title, { color: "#ef4444" }]}>
+            <Text style={[styles.title, { color: "#18181b" }]}>
               {selectedBengkel.name}
             </Text>
             {!!selectedBengkel.address && (
@@ -435,7 +491,7 @@ export default function BookingScreen() {
               <View style={styles.prefilledServiceBox}>
                 <View style={styles.prefilledServiceRow}>
                   <View style={styles.prefilledIconWrap}>
-                    <CheckCircle2 size={16} color="#34d399" />
+                    <CheckCircle2 size={16} color="#18181b" />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.prefilledLabel}>Layanan Terpilih</Text>
@@ -476,7 +532,7 @@ export default function BookingScreen() {
                         >
                           <View style={{ flex: 1 }}>
                             <View style={styles.serviceNameRow}>
-                              {isActive && <CheckCircle2 size={14} color="#ef4444" />}
+                              {isActive && <CheckCircle2 size={14} color="#18181b" />}
                               <Text style={styles.serviceName}>{service.service_name}</Text>
                             </View>
                             <Text style={styles.serviceDesc}>
@@ -531,7 +587,7 @@ export default function BookingScreen() {
                     <TextInput
                       style={styles.textInput}
                       placeholder="Cth: Honda NMAX"
-                      placeholderTextColor="#52525b"
+                      placeholderTextColor="#a1a1aa"
                       value={formData.vehicle_name}
                       onChangeText={(v) =>
                         setFormData((prev) => ({ ...prev, vehicle_name: v }))
@@ -547,7 +603,7 @@ export default function BookingScreen() {
                     <TextInput
                       style={[styles.textInput, { paddingLeft: 12 }]}
                       placeholder="B 1234 XYZ"
-                      placeholderTextColor="#52525b"
+                      placeholderTextColor="#a1a1aa"
                       autoCapitalize="characters"
                       value={formData.license_plate}
                       onChangeText={(v) =>
@@ -561,15 +617,27 @@ export default function BookingScreen() {
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>TANGGAL SERVIS (YYYY-MM-DD)</Text>
                   <View style={styles.inputWrapper}>
-                    <Calendar size={16} color="#71717a" style={styles.inputIcon} />
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="2026-03-25"
-                      placeholderTextColor="#52525b"
-                      value={formData.booking_date}
-                      maxLength={10}
-                      onChangeText={handleDateChange}
-                    />
+                    <TouchableOpacity onPress={() => openPicker("date")} hitSlop={8} style={styles.inputIcon}>
+                      <Calendar size={16} color="#71717a" />
+                    </TouchableOpacity>
+                    {Platform.OS === "web" ? (
+                      <WebInput
+                        inputRef={dateInputRef}
+                        type="date"
+                        min={toDateStr(new Date())}
+                        value={formData.booking_date}
+                        onChange={(e) => handleDateChange(e.target.value)}
+                      />
+                    ) : (
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="2026-03-25"
+                        placeholderTextColor="#a1a1aa"
+                        value={formData.booking_date}
+                        maxLength={10}
+                        onChangeText={handleDateChange}
+                      />
+                    )}
                   </View>
                 </View>
 
@@ -577,16 +645,28 @@ export default function BookingScreen() {
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>JAM SERVIS (HH:MM)</Text>
                   <View style={styles.inputWrapper}>
-                    <Clock size={16} color="#71717a" style={styles.inputIcon} />
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="10:00"
-                      placeholderTextColor="#52525b"
-                      value={formData.booking_time}
-                      editable={!!formData.booking_date}
-                      maxLength={5}
-                      onChangeText={handleTimeChange}
-                    />
+                    <TouchableOpacity onPress={() => openPicker("time")} hitSlop={8} style={styles.inputIcon}>
+                      <Clock size={16} color="#71717a" />
+                    </TouchableOpacity>
+                    {Platform.OS === "web" ? (
+                      <WebInput
+                        inputRef={timeInputRef}
+                        type="time"
+                        value={formData.booking_time}
+                        disabled={!formData.booking_date}
+                        onChange={(e) => handleTimeChange(e.target.value)}
+                      />
+                    ) : (
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="10:00"
+                        placeholderTextColor="#a1a1aa"
+                        value={formData.booking_time}
+                        editable={!!formData.booking_date}
+                        maxLength={5}
+                        onChangeText={handleTimeChange}
+                      />
+                    )}
                   </View>
                 </View>
 
@@ -634,13 +714,13 @@ export default function BookingScreen() {
           <View style={styles.confirmModalContent}>
             <View style={styles.confirmModalHeader}>
               <View style={styles.confirmModalIconWrap}>
-                <Tag size={18} color="#dc2626" />
+                <Tag size={18} color="#18181b" />
               </View>
               <Text style={styles.confirmModalTitle} numberOfLines={2}>
                 {pendingService?.service_name}
               </Text>
               <TouchableOpacity onPress={handleCancelConfirm} style={styles.confirmModalCloseBtn}>
-                <X size={16} color="#a1a1aa" />
+                <X size={16} color="#71717a" />
               </TouchableOpacity>
             </View>
 
@@ -680,6 +760,44 @@ export default function BookingScreen() {
           </View>
         </View>
       </Modal>
+      {/* ================= PICKER TANGGAL / JAM ================= */}
+      {picker && Platform.OS === "android" && (
+        <DateTimePicker
+          value={new Date()}
+          mode={picker}
+          is24Hour
+          minimumDate={picker === "date" ? new Date() : undefined}
+          onChange={handlePickerChange}
+        />
+      )}
+      {picker && Platform.OS === "ios" && (
+        <Modal transparent animationType="fade" onRequestClose={() => setPicker(null)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.confirmModalContent}>
+              <Text style={styles.confirmModalTitle}>
+                {picker === "date" ? "Pilih Tanggal" : "Pilih Jam"}
+              </Text>
+              <DateTimePicker
+                value={tempValue}
+                mode={picker}
+                display="spinner"
+                is24Hour
+                themeVariant="light"
+                minimumDate={picker === "date" ? new Date() : undefined}
+                onChange={handlePickerChange}
+              />
+              <View style={styles.confirmModalActions}>
+                <TouchableOpacity style={styles.confirmModalCancelBtn} onPress={() => setPicker(null)}>
+                  <Text style={styles.confirmModalCancelText}>Batal</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.confirmModalOkBtn} onPress={handleIosPickerDone}>
+                  <Text style={styles.confirmModalOkText}>Pilih</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
        <BottomNavBar activeTab="Booking" />
     </SafeAreaView>
 
@@ -688,437 +806,113 @@ export default function BookingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#000000",
-  },
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: "#000000",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 12,
-  },
-  loadingText: {
-    color: "#71717a",
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
+  loadingContainer: { flex: 1, backgroundColor: "#FFFFFF", justifyContent: "center", alignItems: "center", gap: 12 },
+  loadingText: { color: "#71717a", fontSize: 13, fontWeight: "700" },
+  scrollContent: { padding: 20, paddingBottom: 40 },
   backBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    gap: 8,
-    backgroundColor: "rgba(24, 24, 27, 0.6)",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginBottom: 20,
+    flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 8, backgroundColor: "#FFFFFF",
+    borderWidth: 1, borderColor: "#e4e4e7", paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, marginBottom: 20,
   },
-  backBtnText: {
-    color: "#a1a1aa",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  title: {
-    color: "#FFFFFF",
-    fontSize: 26,
-    fontWeight: "900",
-  },
-  subtitle: {
-    color: "#a1a1aa",
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: 6,
-  },
+  backBtnText: { color: "#52525b", fontSize: 12, fontWeight: "600" },
+  title: { color: "#18181b", fontSize: 26, fontWeight: "900" },
+  subtitle: { color: "#71717a", fontSize: 12, lineHeight: 18, marginTop: 6 },
   sectionLabel: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "800",
-    marginTop: 20,
-    marginBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#27272a",
-    paddingBottom: 8,
+    color: "#18181b", fontSize: 13, fontWeight: "800", marginTop: 20, marginBottom: 12,
+    borderBottomWidth: 1, borderBottomColor: "#e4e4e7", paddingBottom: 8,
   },
-  emptyBox: {
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderStyle: "dashed",
-    borderRadius: 16,
-    padding: 24,
-    alignItems: "center",
-  },
-  emptyBoxText: {
-    color: "#71717a",
-    fontSize: 12,
-    textAlign: "center",
-  },
-  bengkelCard: {
-    backgroundColor: "rgba(24, 24, 27, 0.5)",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 16,
-    padding: 16,
-  },
-  bengkelName: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "800",
-    marginBottom: 8,
-  },
-  bengkelAddressRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 6,
-  },
-  bengkelAddress: {
-    color: "#a1a1aa",
-    fontSize: 11,
-    flex: 1,
-  },
+  emptyBox: { borderWidth: 1, borderColor: "#e4e4e7", borderStyle: "dashed", borderRadius: 16, padding: 24, alignItems: "center" },
+  emptyBoxText: { color: "#71717a", fontSize: 12, textAlign: "center" },
+  bengkelCard: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#e4e4e7", borderRadius: 16, padding: 16 },
+  bengkelName: { color: "#18181b", fontSize: 14, fontWeight: "800", marginBottom: 8 },
+  bengkelAddressRow: { flexDirection: "row", alignItems: "flex-start", gap: 6 },
+  bengkelAddress: { color: "#71717a", fontSize: 11, flex: 1 },
   bengkelCardFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 14,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: "#27272a",
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: "#e4e4e7",
   },
-  badgeMitra: {
-    backgroundColor: "rgba(220, 38, 38, 0.1)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  badgeMitraText: {
-    color: "#ef4444",
-    fontSize: 9,
-    fontWeight: "800",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
+  badgeMitra: { backgroundColor: "#f4f4f5", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  badgeMitraText: { color: "#18181b", fontSize: 9, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 },
   serviceCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "rgba(24, 24, 27, 0.5)",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 16,
-    padding: 14,
-    gap: 10,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#FFFFFF",
+    borderWidth: 1, borderColor: "#e4e4e7", borderRadius: 16, padding: 14, gap: 10,
   },
-  serviceCardActive: {
-    backgroundColor: "rgba(220, 38, 38, 0.08)",
-    borderColor: "#dc2626",
-  },
-  serviceNameRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  serviceName: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  serviceDesc: {
-    color: "#a1a1aa",
-    fontSize: 11,
-    marginTop: 4,
-  },
-  servicePrice: {
-    color: "#ef4444",
-    fontSize: 12,
-    fontWeight: "800",
-    fontFamily: "monospace",
-  },
+  serviceCardActive: { backgroundColor: "#f4f4f5", borderColor: "#18181b" },
+  serviceNameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  serviceName: { color: "#18181b", fontSize: 13, fontWeight: "800" },
+  serviceDesc: { color: "#71717a", fontSize: 11, marginTop: 4 },
+  servicePrice: { color: "#18181b", fontSize: 12, fontWeight: "800", fontFamily: "monospace" },
 
   // BOX: Layanan sudah dipilih dari Dashboard (skip pemilihan ulang)
   prefilledServiceBox: {
-    backgroundColor: "rgba(16, 185, 129, 0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(52, 211, 153, 0.3)",
-    borderRadius: 16,
-    padding: 14,
-    marginTop: 20,
-    marginBottom: 20,
+    backgroundColor: "#f4f4f5", borderWidth: 1, borderColor: "#e4e4e7",
+    borderRadius: 16, padding: 14, marginTop: 20, marginBottom: 20,
   },
-  prefilledServiceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  prefilledIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: "rgba(52, 211, 153, 0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  prefilledLabel: {
-    color: "#a1a1aa",
-    fontSize: 10,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  prefilledServiceName: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "900",
-    marginTop: 2,
-  },
+  prefilledServiceRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  prefilledIconWrap: { width: 34, height: 34, borderRadius: 10, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center" },
+  prefilledLabel: { color: "#71717a", fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5 },
+  prefilledServiceName: { color: "#18181b", fontSize: 14, fontWeight: "900", marginTop: 2 },
   prefilledChangeBtn: {
-    alignSelf: "flex-start",
-    marginTop: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 10,
-    backgroundColor: "#18181b",
-    borderWidth: 1,
-    borderColor: "#27272a",
+    alignSelf: "flex-start", marginTop: 12, paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: 10, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#d4d4d8",
   },
-  prefilledChangeBtnText: {
-    color: "#a1a1aa",
-    fontSize: 11,
-    fontWeight: "700",
-  },
+  prefilledChangeBtnText: { color: "#18181b", fontSize: 11, fontWeight: "700" },
 
-  formCard: {
-    backgroundColor: "rgba(9, 9, 11, 0.85)",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 24,
-    padding: 20,
-    marginTop: 4,
-  },
-  formTitle: {
-    color: "#FFFFFF",
-    fontSize: 20,
-    fontWeight: "900",
-    marginBottom: 4,
-  },
-  formSubtitle: {
-    color: "#a1a1aa",
-    fontSize: 12,
-    marginBottom: 18,
-  },
-  summaryBox: {
-    backgroundColor: "rgba(0,0,0,0.5)",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 18,
-  },
-  summaryRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 6,
-  },
-  summaryRowBorder: {
-    borderTopWidth: 1,
-    borderTopColor: "rgba(39, 39, 42, 0.5)",
-    marginTop: 4,
-  },
-  summaryLabelRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  summaryLabel: {
-    color: "#71717a",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  summaryValue: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    fontWeight: "800",
-  },
-  summaryValuePending: {
-    color: "#ef4444",
-  },
-  inputGroup: {
-    marginBottom: 14,
-  },
-  inputLabel: {
-    color: "#a1a1aa",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1,
-    marginBottom: 6,
-  },
+  formCard: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#e4e4e7", borderRadius: 24, padding: 20, marginTop: 4 },
+  formTitle: { color: "#18181b", fontSize: 20, fontWeight: "900", marginBottom: 4 },
+  formSubtitle: { color: "#71717a", fontSize: 12, marginBottom: 18 },
+  summaryBox: { backgroundColor: "#f4f4f5", borderWidth: 1, borderColor: "#e4e4e7", borderRadius: 16, padding: 14, marginBottom: 18 },
+  summaryRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 6 },
+  summaryRowBorder: { borderTopWidth: 1, borderTopColor: "#e4e4e7", marginTop: 4 },
+  summaryLabelRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  summaryLabel: { color: "#71717a", fontSize: 11, fontWeight: "700" },
+  summaryValue: { color: "#18181b", fontSize: 11, fontWeight: "800" },
+  summaryValuePending: { color: "#a1a1aa" },
+  inputGroup: { marginBottom: 14 },
+  inputLabel: { color: "#3f3f46", fontSize: 10, fontWeight: "800", letterSpacing: 1, marginBottom: 6 },
   inputWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#18181b",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 12,
-    paddingHorizontal: 12,
+    flexDirection: "row", alignItems: "center", backgroundColor: "#f4f4f5",
+    borderWidth: 1, borderColor: "#e4e4e7", borderRadius: 12, paddingHorizontal: 12,
   },
-  inputIcon: {
-    marginRight: 8,
-  },
-  textInput: {
-    flex: 1,
-    color: "#FFFFFF",
-    fontSize: 13,
-    paddingVertical: 12,
-  },
+  inputIcon: { marginRight: 8 },
+  textInput: { flex: 1, color: "#18181b", fontSize: 13, paddingVertical: 12 },
   submitBtn: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#dc2626",
-    paddingVertical: 15,
-    borderRadius: 12,
-    marginTop: 8,
+    flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8,
+    backgroundColor: "#18181b", paddingVertical: 15, borderRadius: 12, marginTop: 8,
   },
-  submitBtnDisabled: {
-    backgroundColor: "#27272a",
-  },
-  submitBtnText: {
-    color: "#FFFFFF",
-    fontWeight: "bold",
-    fontSize: 13,
-  },
+  submitBtnDisabled: { backgroundColor: "#a1a1aa" },
+  submitBtnText: { color: "#FFFFFF", fontWeight: "bold", fontSize: 13 },
 
   // ===== MODAL KONFIRMASI LAYANAN =====
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.8)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", padding: 20 },
   confirmModalContent: {
-    width: "100%",
-    backgroundColor: "#09090b",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 20,
-    padding: 18,
-    gap: 14,
+    width: "100%", backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#e4e4e7",
+    borderRadius: 20, padding: 18, gap: 14,
   },
-  confirmModalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
+  confirmModalHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
   confirmModalIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: "rgba(220, 38, 38, 0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(220, 38, 38, 0.3)",
-    alignItems: "center",
-    justifyContent: "center",
+    width: 36, height: 36, borderRadius: 10, backgroundColor: "#f4f4f5", borderWidth: 1,
+    borderColor: "#e4e4e7", alignItems: "center", justifyContent: "center",
   },
-  confirmModalTitle: {
-    flex: 1,
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "900",
-  },
+  confirmModalTitle: { flex: 1, color: "#18181b", fontSize: 14, fontWeight: "900" },
   confirmModalCloseBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 9,
-    backgroundColor: "#18181b",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    alignItems: "center",
-    justifyContent: "center",
+    width: 30, height: 30, borderRadius: 9, backgroundColor: "#f4f4f5", borderWidth: 1,
+    borderColor: "#e4e4e7", alignItems: "center", justifyContent: "center",
   },
-  confirmModalDesc: {
-    color: "#a1a1aa",
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  confirmDetailBox: {
-    backgroundColor: "rgba(24, 24, 27, 0.6)",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 14,
-    padding: 14,
-  },
-  confirmDetailRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 6,
-  },
-  confirmDetailRowBorder: {
-    borderTopWidth: 1,
-    borderTopColor: "rgba(39, 39, 42, 0.6)",
-    marginTop: 4,
-  },
-  confirmDetailLabelRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  confirmDetailLabel: {
-    color: "#71717a",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  confirmDetailValue: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    fontWeight: "700",
-    flexShrink: 1,
-    textAlign: "right",
-    marginLeft: 12,
-  },
-  confirmDetailValuePrice: {
-    color: "#34d399",
-    fontSize: 13,
-    fontWeight: "900",
-  },
-  confirmModalActions: {
-    flexDirection: "row",
-    gap: 10,
-  },
+  confirmModalDesc: { color: "#71717a", fontSize: 12, lineHeight: 18 },
+  confirmDetailBox: { backgroundColor: "#f4f4f5", borderWidth: 1, borderColor: "#e4e4e7", borderRadius: 14, padding: 14 },
+  confirmDetailRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 6 },
+  confirmDetailRowBorder: { borderTopWidth: 1, borderTopColor: "#e4e4e7", marginTop: 4 },
+  confirmDetailLabelRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  confirmDetailLabel: { color: "#71717a", fontSize: 11, fontWeight: "700" },
+  confirmDetailValue: { color: "#18181b", fontSize: 11, fontWeight: "700", flexShrink: 1, textAlign: "right", marginLeft: 12 },
+  confirmDetailValuePrice: { color: "#18181b", fontSize: 13, fontWeight: "900" },
+  confirmModalActions: { flexDirection: "row", gap: 10 },
   confirmModalCancelBtn: {
-    flex: 1,
-    paddingVertical: 13,
-    borderRadius: 12,
-    backgroundColor: "#18181b",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    alignItems: "center",
+    flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: "#FFFFFF",
+    borderWidth: 1, borderColor: "#d4d4d8", alignItems: "center",
   },
-  confirmModalCancelText: {
-    color: "#a1a1aa",
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  confirmModalOkBtn: {
-    flex: 1,
-    paddingVertical: 13,
-    borderRadius: 12,
-    backgroundColor: "#dc2626",
-    alignItems: "center",
-  },
-  confirmModalOkText: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "800",
-  },
+  confirmModalCancelText: { color: "#18181b", fontSize: 13, fontWeight: "700" },
+  confirmModalOkBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: "#18181b", alignItems: "center" },
+  confirmModalOkText: { color: "#FFFFFF", fontSize: 13, fontWeight: "800" },
 });

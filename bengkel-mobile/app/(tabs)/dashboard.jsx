@@ -299,7 +299,7 @@ export default function UserDashboardScreen() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#dc2626" />
+        <ActivityIndicator size="large" color="#18181b" />
         <Text style={styles.loadingText}>Memuat data...</Text>
         <BottomNavBar activeTab="home" />
       </View>
@@ -308,7 +308,7 @@ export default function UserDashboardScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* BACKGROUND IMAGE */}
       <View style={StyleSheet.absoluteFillObject}>
@@ -355,7 +355,7 @@ export default function UserDashboardScreen() {
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 placeholder="Cari nama bengkel atau alamat..."
-                placeholderTextColor="#71717a"
+                placeholderTextColor="#a1a1aa"
                 style={styles.searchInput}
               />
               {searchQuery.length > 0 && (
@@ -385,21 +385,21 @@ export default function UserDashboardScreen() {
             <View style={styles.activeChipRow}>
               {locationFilter.trim() ? (
                 <View style={styles.activeChip}>
-                  <MapPin size={11} color="#dc2626" />
+                  <MapPin size={11} color="#18181b" />
                   <Text style={styles.activeChipText} numberOfLines={1}>
                     {locationFilter}
                   </Text>
                   <TouchableOpacity onPress={() => setLocationFilter("")}>
-                    <X size={12} color="#a1a1aa" />
+                    <X size={12} color="#71717a" />
                   </TouchableOpacity>
                 </View>
               ) : null}
               {sortOption !== "name_asc" ? (
                 <View style={styles.activeChip}>
-                  <ArrowUpAZ size={11} color="#dc2626" />
+                  <ArrowUpAZ size={11} color="#18181b" />
                   <Text style={styles.activeChipText}>Nama Z-A</Text>
                   <TouchableOpacity onPress={() => setSortOption("name_asc")}>
-                    <X size={12} color="#a1a1aa" />
+                    <X size={12} color="#71717a" />
                   </TouchableOpacity>
                 </View>
               ) : null}
@@ -419,11 +419,11 @@ export default function UserDashboardScreen() {
 
         {isLoadingBengkels ? (
           <View style={styles.bengkelLoadingBox}>
-            <ActivityIndicator size="small" color="#dc2626" />
+            <ActivityIndicator size="small" color="#18181b" />
           </View>
         ) : filteredBengkels.length === 0 ? (
           <View style={styles.bengkelEmptyBox}>
-            <Store size={28} color="#52525b" />
+            <Store size={28} color="#a1a1aa" />
             <Text style={styles.bengkelEmptyText}>
               {bengkels.length === 0
                 ? "Belum ada bengkel partner tersedia."
@@ -438,7 +438,7 @@ export default function UserDashboardScreen() {
                 }}
                 style={styles.clearAllBtn}
               >
-                <RotateCcw size={12} color="#dc2626" />
+                <RotateCcw size={12} color="#18181b" />
                 <Text style={styles.clearAllBtnText}>Reset pencarian & filter</Text>
               </TouchableOpacity>
             )}
@@ -453,7 +453,7 @@ export default function UserDashboardScreen() {
                 onPress={() => openBengkelModal(bengkel)}
               >
                 <View style={styles.bengkelRowIconWrap}>
-                  <Store size={20} color="#dc2626" />
+                  <Store size={20} color="#18181b" />
                 </View>
 
                 <View style={styles.bengkelRowBody}>
@@ -462,21 +462,21 @@ export default function UserDashboardScreen() {
                   </Text>
 
                   <View style={styles.bengkelRowMetaLine}>
-                    <MapPin size={11} color="#a1a1aa" />
+                    <MapPin size={11} color="#71717a" />
                     <Text style={styles.bengkelRowMetaText} numberOfLines={1}>
                       {bengkel.address}
                     </Text>
                   </View>
 
                   <View style={styles.bengkelRowMetaLine}>
-                    <Phone size={11} color="#a1a1aa" />
+                    <Phone size={11} color="#71717a" />
                     <Text style={styles.bengkelRowMetaText} numberOfLines={1}>
                       {bengkel.phone}
                     </Text>
                   </View>
                 </View>
 
-                <ChevronRight size={18} color="#52525b" />
+                <ChevronRight size={18} color="#a1a1aa" />
               </TouchableOpacity>
             ))}
           </View>
@@ -498,7 +498,7 @@ export default function UserDashboardScreen() {
                 onPress={() => setFilterModalVisible(false)}
                 style={styles.confirmModalCloseBtn}
               >
-                <X size={16} color="#a1a1aa" />
+                <X size={16} color="#71717a" />
               </TouchableOpacity>
             </View>
 
@@ -509,7 +509,7 @@ export default function UserDashboardScreen() {
                 value={draftLocationFilter}
                 onChangeText={setDraftLocationFilter}
                 placeholder="cth: Kopo, Soekarno-Hatta, Buah Batu..."
-                placeholderTextColor="#71717a"
+                placeholderTextColor="#a1a1aa"
                 style={styles.filterInput}
               />
             </View>
@@ -521,7 +521,7 @@ export default function UserDashboardScreen() {
                 onPress={() => setDraftSortOption("name_asc")}
               >
                 <View style={styles.sortOptionLabelRow}>
-                  <ArrowDownAZ size={15} color="#a1a1aa" />
+                  <ArrowDownAZ size={15} color="#71717a" />
                   <Text style={styles.sortOptionText}>Nama (A-Z)</Text>
                 </View>
                 <View
@@ -541,7 +541,7 @@ export default function UserDashboardScreen() {
                 onPress={() => setDraftSortOption("name_desc")}
               >
                 <View style={styles.sortOptionLabelRow}>
-                  <ArrowUpAZ size={15} color="#a1a1aa" />
+                  <ArrowUpAZ size={15} color="#71717a" />
                   <Text style={styles.sortOptionText}>Nama (Z-A)</Text>
                 </View>
                 <View
@@ -588,7 +588,7 @@ export default function UserDashboardScreen() {
             <View style={styles.bengkelModalHeader}>
               <View style={styles.bengkelModalHeaderInfo}>
                 <View style={styles.bengkelModalIconWrap}>
-                  <Store size={20} color="#dc2626" />
+                  <Store size={20} color="#18181b" />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.bengkelModalTitle} numberOfLines={1}>
@@ -603,12 +603,12 @@ export default function UserDashboardScreen() {
                 onPress={closeBengkelModal}
                 style={styles.bengkelModalCloseBtn}
               >
-                <X size={18} color="#a1a1aa" />
+                <X size={18} color="#71717a" />
               </TouchableOpacity>
             </View>
 
             <View style={styles.bengkelModalContactRow}>
-              <Phone size={12} color="#a1a1aa" />
+              <Phone size={12} color="#71717a" />
               <Text style={styles.bengkelModalContactText}>
                 {selectedBengkel?.phone}
               </Text>
@@ -621,7 +621,7 @@ export default function UserDashboardScreen() {
                 value={serviceSearch}
                 onChangeText={setServiceSearch}
                 placeholder="Cari layanan..."
-                placeholderTextColor="#71717a"
+                placeholderTextColor="#a1a1aa"
                 style={styles.serviceSearchInput}
               />
               {serviceSearch.length > 0 && (
@@ -668,9 +668,9 @@ export default function UserDashboardScreen() {
                 style={[styles.priceChip, styles.sortChip]}
               >
                 {serviceSort === "price_desc" ? (
-                  <ArrowUpAZ size={12} color="#dc2626" />
+                  <ArrowUpAZ size={12} color="#18181b" />
                 ) : (
-                  <ArrowDownAZ size={12} color="#dc2626" />
+                  <ArrowDownAZ size={12} color="#18181b" />
                 )}
                 <Text style={styles.sortChipText}>
                   {serviceSort === "price_asc"
@@ -688,11 +688,11 @@ export default function UserDashboardScreen() {
 
             {isLoadingServices ? (
               <View style={styles.bengkelLoadingBox}>
-                <ActivityIndicator size="small" color="#dc2626" />
+                <ActivityIndicator size="small" color="#18181b" />
               </View>
             ) : filteredServices.length === 0 ? (
               <View style={styles.bengkelEmptyBox}>
-                <Wrench size={28} color="#52525b" />
+                <Wrench size={28} color="#a1a1aa" />
                 <Text style={styles.bengkelEmptyText}>
                   {bengkelServices.length === 0
                     ? "Bengkel ini belum memiliki daftar layanan."
@@ -707,7 +707,7 @@ export default function UserDashboardScreen() {
                 {filteredServices.map((service) => (
                   <View key={service.id} style={styles.serviceListItem}>
                     <View style={styles.serviceListIconWrap}>
-                      <Tag size={16} color="#dc2626" />
+                      <Tag size={16} color="#18181b" />
                     </View>
 
                     <View style={{ flex: 1 }}>
@@ -754,13 +754,13 @@ export default function UserDashboardScreen() {
           <View style={styles.confirmModalContent}>
             <View style={styles.confirmModalHeader}>
               <View style={styles.confirmModalIconWrap}>
-                <Tag size={18} color="#dc2626" />
+                <Tag size={18} color="#18181b" />
               </View>
               <Text style={styles.confirmModalTitle} numberOfLines={2}>
                 {pendingService?.service_name}
               </Text>
               <TouchableOpacity onPress={handleCancelConfirm} style={styles.confirmModalCloseBtn}>
-                <X size={16} color="#a1a1aa" />
+                <X size={16} color="#71717a" />
               </TouchableOpacity>
             </View>
 
@@ -808,663 +808,198 @@ export default function UserDashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#000",
-  },
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: "#000",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    color: "#71717a",
-    fontSize: 14,
-    fontWeight: "700",
-    marginTop: 12,
-  },
-  bgImage: {
-    width: "100%",
-    height: "100%",
-    opacity: 0.3,
-  },
-  bgOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.75)",
-  },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
+  loadingContainer: { flex: 1, backgroundColor: "#FFFFFF", justifyContent: "center", alignItems: "center" },
+  loadingText: { color: "#71717a", fontSize: 14, fontWeight: "700", marginTop: 12 },
+  bgImage: { width: "100%", height: "100%", opacity: 0.3 },
+  bgOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(255, 255, 255, 0.92)" },
   header: {
-    height: 68,
-    backgroundColor: "rgba(9, 9, 11, 0.9)",
-    borderBottomWidth: 1,
-    borderBottomColor: "#18181b",
-    paddingHorizontal: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    zIndex: 10,
+    height: 68, backgroundColor: "rgba(255, 255, 255, 0.92)", borderBottomWidth: 1, borderBottomColor: "#e4e4e7",
+    paddingHorizontal: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between", zIndex: 10,
   },
-  userInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  avatarIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: "#dc2626",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  userName: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "900",
-  },
-  userPhone: {
-    color: "#a1a1aa",
-    fontSize: 11,
-    fontFamily: "monospace",
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 120,
-  },
+  userInfo: { flexDirection: "row", alignItems: "center", gap: 12 },
+  avatarIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: "#18181b", alignItems: "center", justifyContent: "center" },
+  userName: { color: "#18181b", fontSize: 14, fontWeight: "900" },
+  userPhone: { color: "#71717a", fontSize: 11, fontFamily: "monospace" },
+  scrollView: { flex: 1 },
+  scrollContent: { padding: 16, paddingBottom: 120 },
 
   // ===== HERO PENCARIAN =====
   searchHero: {
-    backgroundColor: "rgba(9, 9, 11, 0.9)",
-    borderWidth: 1,
-    borderColor: "#18181b",
-    borderRadius: 22,
-    padding: 18,
-    marginBottom: 20,
-    overflow: "hidden",
+    backgroundColor: "rgba(255, 255, 255, 0.92)", borderWidth: 1, borderColor: "#e4e4e7",
+    borderRadius: 22, padding: 18, marginBottom: 20, overflow: "hidden",
   },
   searchHeroGlow: {
-    position: "absolute",
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: "rgba(220, 38, 38, 0.18)",
-    top: -100,
-    right: -60,
+    position: "absolute", width: 200, height: 200, borderRadius: 100,
+    backgroundColor: "rgba(24, 24, 27, 0.06)", top: -100, right: -60,
   },
-  searchHeroTitle: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "900",
-  },
-  searchHeroSubtitle: {
-    color: "#a1a1aa",
-    fontSize: 11.5,
-    marginTop: 4,
-    marginBottom: 16,
-  },
-  searchBarRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
+  searchHeroTitle: { color: "#18181b", fontSize: 18, fontWeight: "900" },
+  searchHeroSubtitle: { color: "#71717a", fontSize: 11.5, marginTop: 4, marginBottom: 16 },
+  searchBarRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   searchBarWrap: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#000",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    height: 46,
+    flex: 1, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#f4f4f5",
+    borderWidth: 1, borderColor: "#e4e4e7", borderRadius: 14, paddingHorizontal: 14, height: 46,
   },
-  searchInput: {
-    flex: 1,
-    color: "#fff",
-    fontSize: 13,
-  },
-  filterButton: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    backgroundColor: "#dc2626",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  searchInput: { flex: 1, color: "#18181b", fontSize: 13 },
+  filterButton: { width: 46, height: 46, borderRadius: 14, backgroundColor: "#18181b", alignItems: "center", justifyContent: "center" },
   filterBadge: {
-    position: "absolute",
-    top: -4,
-    right: -4,
-    minWidth: 17,
-    height: 17,
-    paddingHorizontal: 3,
-    borderRadius: 9,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
+    position: "absolute", top: -4, right: -4, minWidth: 17, height: 17, paddingHorizontal: 3,
+    borderRadius: 9, backgroundColor: "#fff", alignItems: "center", justifyContent: "center",
   },
-  filterBadgeText: {
-    color: "#dc2626",
-    fontSize: 10,
-    fontWeight: "900",
-  },
-  activeChipRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 12,
-  },
+  filterBadgeText: { color: "#18181b", fontSize: 10, fontWeight: "900" },
+  activeChipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
   activeChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "rgba(220, 38, 38, 0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(220, 38, 38, 0.35)",
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 20,
-    maxWidth: 200,
+    flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#f4f4f5", borderWidth: 1,
+    borderColor: "#e4e4e7", paddingVertical: 5, paddingHorizontal: 10, borderRadius: 20, maxWidth: 200,
   },
-  activeChipText: {
-    color: "#fff",
-    fontSize: 10.5,
-    fontWeight: "700",
-    flexShrink: 1,
-  },
+  activeChipText: { color: "#18181b", fontSize: 10.5, fontWeight: "700", flexShrink: 1 },
 
   // SECTION HEADERS
-  sectionHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "900",
-  },
-  resultCountText: {
-    color: "#71717a",
-    fontSize: 11,
-    fontWeight: "700",
-  },
+  sectionHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  sectionTitle: { color: "#18181b", fontSize: 16, fontWeight: "900" },
+  resultCountText: { color: "#71717a", fontSize: 11, fontWeight: "700" },
 
   // ===== DAFTAR BENGKEL (LIST VERTIKAL) =====
-  bengkelVerticalList: {
-    gap: 10,
-  },
+  bengkelVerticalList: { gap: 10 },
   bengkelRowCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: "rgba(9, 9, 11, 0.85)",
-    borderWidth: 1,
-    borderColor: "#18181b",
-    borderRadius: 16,
-    padding: 12,
+    flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "rgba(255, 255, 255, 0.92)",
+    borderWidth: 1, borderColor: "#e4e4e7", borderRadius: 16, padding: 12,
   },
   bengkelRowIconWrap: {
-    width: 46,
-    height: 46,
-    borderRadius: 13,
-    backgroundColor: "rgba(220, 38, 38, 0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(220, 38, 38, 0.3)",
-    alignItems: "center",
-    justifyContent: "center",
+    width: 46, height: 46, borderRadius: 13, backgroundColor: "#f4f4f5", borderWidth: 1,
+    borderColor: "#e4e4e7", alignItems: "center", justifyContent: "center",
   },
-  bengkelRowBody: {
-    flex: 1,
-    gap: 4,
-  },
-  bengkelRowName: {
-    color: "#fff",
-    fontSize: 13.5,
-    fontWeight: "900",
-  },
-  bengkelRowMetaLine: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  bengkelRowMetaText: {
-    color: "#a1a1aa",
-    fontSize: 10.5,
-    flex: 1,
-  },
+  bengkelRowBody: { flex: 1, gap: 4 },
+  bengkelRowName: { color: "#18181b", fontSize: 13.5, fontWeight: "900" },
+  bengkelRowMetaLine: { flexDirection: "row", alignItems: "center", gap: 5 },
+  bengkelRowMetaText: { color: "#71717a", fontSize: 10.5, flex: 1 },
   bengkelLoadingBox: {
-    paddingVertical: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(9, 9, 11, 0.85)",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#18181b",
+    paddingVertical: 24, alignItems: "center", justifyContent: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.92)", borderRadius: 16, borderWidth: 1, borderColor: "#e4e4e7",
   },
   bengkelEmptyBox: {
-    paddingVertical: 24,
-    paddingHorizontal: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(9, 9, 11, 0.85)",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#18181b",
-    gap: 8,
+    paddingVertical: 24, paddingHorizontal: 16, alignItems: "center", justifyContent: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.92)", borderRadius: 16, borderWidth: 1, borderColor: "#e4e4e7", gap: 8,
   },
-  bengkelEmptyText: {
-    color: "#a1a1aa",
-    fontSize: 11,
-    textAlign: "center",
-  },
+  bengkelEmptyText: { color: "#71717a", fontSize: 11, textAlign: "center" },
   clearAllBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(220, 38, 38, 0.35)",
+    flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4, paddingVertical: 6,
+    paddingHorizontal: 12, borderRadius: 20, borderWidth: 1, borderColor: "#d4d4d8",
   },
-  clearAllBtnText: {
-    color: "#dc2626",
-    fontSize: 10.5,
-    fontWeight: "800",
-  },
+  clearAllBtnText: { color: "#18181b", fontSize: 10.5, fontWeight: "800" },
 
   // MODAL OVERLAY
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.8)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", padding: 20 },
 
   // ===== MODAL FILTER BENGKEL =====
   filterModalContent: {
-    width: "100%",
-    backgroundColor: "#09090b",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 20,
-    padding: 18,
-    gap: 4,
+    width: "100%", backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#e4e4e7",
+    borderRadius: 20, padding: 18, gap: 4,
   },
-  filterModalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  filterModalTitle: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "900",
-  },
-  filterGroupLabel: {
-    color: "#71717a",
-    fontSize: 11,
-    fontWeight: "800",
-    marginTop: 12,
-    marginBottom: 8,
-  },
+  filterModalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
+  filterModalTitle: { color: "#18181b", fontSize: 15, fontWeight: "900" },
+  filterGroupLabel: { color: "#3f3f46", fontSize: 11, fontWeight: "800", marginTop: 12, marginBottom: 8 },
   filterInputWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#000",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 44,
+    flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#f4f4f5", borderWidth: 1,
+    borderColor: "#e4e4e7", borderRadius: 12, paddingHorizontal: 12, height: 44,
   },
-  filterInput: {
-    flex: 1,
-    color: "#fff",
-    fontSize: 12.5,
-  },
-  sortOptionList: {
-    gap: 8,
-  },
+  filterInput: { flex: 1, color: "#18181b", fontSize: 12.5 },
+  sortOptionList: { gap: 8 },
   sortOptionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "rgba(24, 24, 27, 0.6)",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 12,
-    paddingVertical: 11,
-    paddingHorizontal: 12,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#f4f4f5",
+    borderWidth: 1, borderColor: "#e4e4e7", borderRadius: 12, paddingVertical: 11, paddingHorizontal: 12,
   },
-  sortOptionLabelRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  sortOptionText: {
-    color: "#e4e4e7",
-    fontSize: 12.5,
-    fontWeight: "700",
-  },
+  sortOptionLabelRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  sortOptionText: { color: "#18181b", fontSize: 12.5, fontWeight: "700" },
   radioOuter: {
-    width: 20,
-    height: 20,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: "#3f3f46",
-    alignItems: "center",
-    justifyContent: "center",
+    width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, borderColor: "#d4d4d8",
+    alignItems: "center", justifyContent: "center",
   },
-  radioOuterActive: {
-    backgroundColor: "#dc2626",
-    borderColor: "#dc2626",
-  },
-  filterModalActions: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 18,
-  },
+  radioOuterActive: { backgroundColor: "#18181b", borderColor: "#18181b" },
+  filterModalActions: { flexDirection: "row", gap: 10, marginTop: 18 },
 
   // ===== MODAL: DETAIL BENGKEL + LAYANAN =====
   bengkelModalContent: {
-    width: "100%",
-    maxHeight: "82%",
-    backgroundColor: "#09090b",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 20,
-    padding: 18,
-    gap: 10,
+    width: "100%", maxHeight: "82%", backgroundColor: "#FFFFFF", borderWidth: 1,
+    borderColor: "#e4e4e7", borderRadius: 20, padding: 18, gap: 10,
   },
-  bengkelModalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
-  },
-  bengkelModalHeaderInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    flex: 1,
-  },
+  bengkelModalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  bengkelModalHeaderInfo: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
   bengkelModalIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "rgba(220, 38, 38, 0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(220, 38, 38, 0.3)",
-    alignItems: "center",
-    justifyContent: "center",
+    width: 40, height: 40, borderRadius: 12, backgroundColor: "#f4f4f5", borderWidth: 1,
+    borderColor: "#e4e4e7", alignItems: "center", justifyContent: "center",
   },
-  bengkelModalTitle: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "900",
-  },
-  bengkelModalSubtitle: {
-    color: "#a1a1aa",
-    fontSize: 11,
-    marginTop: 2,
-  },
+  bengkelModalTitle: { color: "#18181b", fontSize: 15, fontWeight: "900" },
+  bengkelModalSubtitle: { color: "#71717a", fontSize: 11, marginTop: 2 },
   bengkelModalCloseBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: "#18181b",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    alignItems: "center",
-    justifyContent: "center",
+    width: 32, height: 32, borderRadius: 10, backgroundColor: "#f4f4f5", borderWidth: 1,
+    borderColor: "#e4e4e7", alignItems: "center", justifyContent: "center",
   },
   bengkelModalContactRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#18181b",
+    flexDirection: "row", alignItems: "center", gap: 6, paddingBottom: 10,
+    borderBottomWidth: 1, borderBottomColor: "#e4e4e7",
   },
-  bengkelModalContactText: {
-    color: "#a1a1aa",
-    fontSize: 11,
-  },
+  bengkelModalContactText: { color: "#71717a", fontSize: 11 },
 
   // pencarian & filter layanan
   serviceSearchWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#000",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 42,
+    flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#f4f4f5", borderWidth: 1,
+    borderColor: "#e4e4e7", borderRadius: 12, paddingHorizontal: 12, height: 42,
   },
-  serviceSearchInput: {
-    flex: 1,
-    color: "#fff",
-    fontSize: 12.5,
-  },
-  priceChipRow: {
-    flexGrow: 0,
-  },
+  serviceSearchInput: { flex: 1, color: "#18181b", fontSize: 12.5 },
+  priceChipRow: { flexGrow: 0 },
   priceChip: {
-    borderWidth: 1,
-    borderColor: "#27272a",
-    backgroundColor: "rgba(24, 24, 27, 0.6)",
-    borderRadius: 20,
-    paddingVertical: 7,
-    paddingHorizontal: 12,
+    borderWidth: 1, borderColor: "#e4e4e7", backgroundColor: "#f4f4f5",
+    borderRadius: 20, paddingVertical: 7, paddingHorizontal: 12,
   },
-  priceChipActive: {
-    backgroundColor: "#dc2626",
-    borderColor: "#dc2626",
-  },
-  priceChipText: {
-    color: "#a1a1aa",
-    fontSize: 10.5,
-    fontWeight: "700",
-  },
-  priceChipTextActive: {
-    color: "#fff",
-  },
-  sortChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    borderColor: "rgba(220, 38, 38, 0.35)",
-  },
-  sortChipText: {
-    color: "#dc2626",
-    fontSize: 10.5,
-    fontWeight: "800",
-  },
+  priceChipActive: { backgroundColor: "#18181b", borderColor: "#18181b" },
+  priceChipText: { color: "#71717a", fontSize: 10.5, fontWeight: "700" },
+  priceChipTextActive: { color: "#fff" },
+  sortChip: { flexDirection: "row", alignItems: "center", gap: 5, borderColor: "#d4d4d8" },
+  sortChipText: { color: "#18181b", fontSize: 10.5, fontWeight: "800" },
 
-  bengkelModalSectionLabel: {
-    color: "#fff",
-    fontSize: 13,
-    fontWeight: "800",
-    marginTop: 2,
-  },
-  serviceScrollList: {
-    gap: 10,
-  },
+  bengkelModalSectionLabel: { color: "#18181b", fontSize: 13, fontWeight: "800", marginTop: 2 },
+  serviceScrollList: { gap: 10 },
   serviceListItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: "rgba(24, 24, 27, 0.6)",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 10,
+    flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: "#f4f4f5", borderWidth: 1,
+    borderColor: "#e4e4e7", borderRadius: 14, padding: 12, marginBottom: 10,
   },
-  serviceListIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: "rgba(220, 38, 38, 0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  serviceListName: {
-    color: "#fff",
-    fontSize: 12.5,
-    fontWeight: "800",
-  },
-  serviceListDescription: {
-    color: "#a1a1aa",
-    fontSize: 10.5,
-    marginTop: 2,
-  },
-  serviceListPrice: {
-    color: "#34d399",
-    fontSize: 12,
-    fontWeight: "900",
-    marginTop: 4,
-  },
-  serviceListBookBtn: {
-    backgroundColor: "#dc2626",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-  },
-  serviceListBookBtnText: {
-    color: "#fff",
-    fontSize: 11,
-    fontWeight: "800",
-  },
+  serviceListIconWrap: { width: 36, height: 36, borderRadius: 10, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center" },
+  serviceListName: { color: "#18181b", fontSize: 12.5, fontWeight: "800" },
+  serviceListDescription: { color: "#71717a", fontSize: 10.5, marginTop: 2 },
+  serviceListPrice: { color: "#18181b", fontSize: 12, fontWeight: "900", marginTop: 4 },
+  serviceListBookBtn: { backgroundColor: "#18181b", paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10 },
+  serviceListBookBtnText: { color: "#fff", fontSize: 11, fontWeight: "800" },
 
   // ===== MODAL KONFIRMASI LAYANAN =====
   confirmModalContent: {
-    width: "100%",
-    backgroundColor: "#09090b",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 20,
-    padding: 18,
-    gap: 14,
+    width: "100%", backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#e4e4e7",
+    borderRadius: 20, padding: 18, gap: 14,
   },
-  confirmModalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
+  confirmModalHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
   confirmModalIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: "rgba(220, 38, 38, 0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(220, 38, 38, 0.3)",
-    alignItems: "center",
-    justifyContent: "center",
+    width: 36, height: 36, borderRadius: 10, backgroundColor: "#f4f4f5", borderWidth: 1,
+    borderColor: "#e4e4e7", alignItems: "center", justifyContent: "center",
   },
-  confirmModalTitle: {
-    flex: 1,
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "900",
-  },
+  confirmModalTitle: { flex: 1, color: "#18181b", fontSize: 14, fontWeight: "900" },
   confirmModalCloseBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 9,
-    backgroundColor: "#18181b",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    alignItems: "center",
-    justifyContent: "center",
+    width: 30, height: 30, borderRadius: 9, backgroundColor: "#f4f4f5", borderWidth: 1,
+    borderColor: "#e4e4e7", alignItems: "center", justifyContent: "center",
   },
-  confirmModalDesc: {
-    color: "#a1a1aa",
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  confirmDetailBox: {
-    backgroundColor: "rgba(24, 24, 27, 0.6)",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 14,
-    padding: 14,
-  },
-  confirmDetailRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 6,
-  },
-  confirmDetailRowBorder: {
-    borderTopWidth: 1,
-    borderTopColor: "rgba(39, 39, 42, 0.6)",
-    marginTop: 4,
-  },
-  confirmDetailLabelRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  confirmDetailLabel: {
-    color: "#71717a",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  confirmDetailValue: {
-    color: "#fff",
-    fontSize: 11,
-    fontWeight: "700",
-    flexShrink: 1,
-    textAlign: "right",
-    marginLeft: 12,
-  },
-  confirmDetailValuePrice: {
-    color: "#34d399",
-    fontSize: 13,
-    fontWeight: "900",
-  },
-  confirmModalActions: {
-    flexDirection: "row",
-    gap: 10,
-  },
+  confirmModalDesc: { color: "#71717a", fontSize: 12, lineHeight: 18 },
+  confirmDetailBox: { backgroundColor: "#f4f4f5", borderWidth: 1, borderColor: "#e4e4e7", borderRadius: 14, padding: 14 },
+  confirmDetailRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 6 },
+  confirmDetailRowBorder: { borderTopWidth: 1, borderTopColor: "#e4e4e7", marginTop: 4 },
+  confirmDetailLabelRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  confirmDetailLabel: { color: "#71717a", fontSize: 11, fontWeight: "700" },
+  confirmDetailValue: { color: "#18181b", fontSize: 11, fontWeight: "700", flexShrink: 1, textAlign: "right", marginLeft: 12 },
+  confirmDetailValuePrice: { color: "#18181b", fontSize: 13, fontWeight: "900" },
+  confirmModalActions: { flexDirection: "row", gap: 10 },
   confirmModalCancelBtn: {
-    flex: 1,
-    paddingVertical: 13,
-    borderRadius: 12,
-    backgroundColor: "#18181b",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    alignItems: "center",
+    flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: "#FFFFFF",
+    borderWidth: 1, borderColor: "#d4d4d8", alignItems: "center",
   },
-  confirmModalCancelText: {
-    color: "#a1a1aa",
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  confirmModalOkBtn: {
-    flex: 1,
-    paddingVertical: 13,
-    borderRadius: 12,
-    backgroundColor: "#dc2626",
-    alignItems: "center",
-  },
-  confirmModalOkText: {
-    color: "#fff",
-    fontSize: 13,
-    fontWeight: "800",
-  },
+  confirmModalCancelText: { color: "#18181b", fontSize: 13, fontWeight: "700" },
+  confirmModalOkBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: "#18181b", alignItems: "center" },
+  confirmModalOkText: { color: "#fff", fontSize: 13, fontWeight: "800" },
 });
