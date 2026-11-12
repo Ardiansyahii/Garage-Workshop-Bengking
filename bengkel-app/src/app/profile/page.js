@@ -341,7 +341,7 @@ export default function ProfilePage() {
           <section className="flex min-h-[420px] flex-col rounded-3xl border border-zinc-200/80 bg-white/95 p-7 shadow-[0_20px_50px_-24px_rgba(0,0,0,0.2)] backdrop-blur-md md:p-10">
             <div className="mb-8 border-b border-zinc-100 pb-6">
               <h3 className="text-xl font-extrabold">Informasi Akun</h3>
-              <p className="mt-2 text-sm text-zinc-500">Data yang terhubung dengan akun Bengkelku Anda.</p>
+              <p className="mt-2 text-sm text-zinc-500">Data yang terhubung dengan akun APEX GARAGE Anda.</p>
             </div>
             <InfoField label="Nomor WhatsApp" icon={<Phone size={18} />} value={user?.whatsapp || '-'} />
             <InfoField label="Password" icon={<Lock size={18} />} value="••••••••" />

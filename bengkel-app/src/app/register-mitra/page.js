@@ -240,7 +240,7 @@ export default function RegisterMitra() {
               <Wrench className="w-4.5 h-4.5 text-white" />
             </div>
             <span className="text-zinc-900 font-extrabold tracking-tight text-lg">
-              BENGKEL<span className="text-zinc-500">KU</span>
+              APE<span className="text-zinc-500">X</span> GARAGE
             </span>
           </div>
         </div>
@@ -281,7 +281,7 @@ export default function RegisterMitra() {
             </h1>
 
             <p className="text-zinc-300 text-sm md:text-base leading-relaxed max-w-lg">
-              Bergabunglah menjadi mitra BengkelKu. Pelanggan dapat menemukan
+              Bergabunglah menjadi mitra APEX GARAGE. Pelanggan dapat menemukan
               bengkel Anda dengan mudah, reservasi online, dan memantau status
               servis secara realtime.
             </p>
@@ -596,7 +596,7 @@ export default function RegisterMitra() {
               <Wrench className="w-3 h-3" />
             </div>
             <span>
-              &copy; {new Date().getFullYear()} BengkelKu Platform. All rights
+              &copy; {new Date().getFullYear()} APEX GARAGE. All rights
               reserved.
             </span>
           </div>

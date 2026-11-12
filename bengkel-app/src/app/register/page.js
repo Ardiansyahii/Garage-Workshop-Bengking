@@ -138,7 +138,7 @@ export default function RegisterPage() {
               <Wrench className="w-6 h-6 text-white" />
             </div>
             <div className="text-2xl font-black tracking-wider">
-              BENGKEL<span className="text-zinc-500">KU</span>
+              APE<span className="text-zinc-500">X</span> GARAGE
             </div>
           </motion.div>
 
@@ -213,7 +213,7 @@ export default function RegisterPage() {
           transition={{ delay: 0.8 }}
           className="hidden md:block text-[10px] text-zinc-500 font-medium"
         >
-          &copy; {new Date().getFullYear()} BENGKELKU. All rights reserved.
+          &copy; {new Date().getFullYear()} APEX GARAGE. All rights reserved.
         </motion.div>
       </section>
 

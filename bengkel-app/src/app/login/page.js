@@ -146,7 +146,7 @@ export default function LoginPage() {
               <Wrench className="w-6 h-6 text-white" />
             </div>
             <div className="text-2xl font-black tracking-wider text-zinc-900">
-              BENGKEL<span className="text-zinc-500">KU</span>
+              APE<span className="text-zinc-500">X</span> GARAGE
             </div>
           </motion.div>
 
@@ -219,7 +219,7 @@ export default function LoginPage() {
           transition={{ delay: 0.8 }}
           className="text-[10px] text-zinc-500 font-medium"
         >
-          &copy; {new Date().getFullYear()} BENGKELKU. System Access.
+          &copy; {new Date().getFullYear()} APEX GARAGE. System Access.
         </motion.div>
       </section>
 

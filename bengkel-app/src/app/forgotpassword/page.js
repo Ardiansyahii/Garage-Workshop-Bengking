@@ -226,7 +226,7 @@ export default function ForgotPasswordPage() {
             <div className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-zinc-900">
               <Wrench size={16} color="#fff" />
             </div>
-            <span className="text-[15px] font-extrabold tracking-[1.5px] text-zinc-900">BENGKELKU</span>
+            <span className="text-[15px] font-extrabold tracking-[1.5px] text-zinc-900">APEX GARAGE</span>
           </div>
 
           <div className="mb-[22px] flex h-[84px] w-[84px] items-center justify-center rounded-full border border-zinc-200 bg-zinc-100">
@@ -351,7 +351,7 @@ export default function ForgotPasswordPage() {
         </form>
 
         <p className="mt-5 text-center text-[10px] text-zinc-400">
-          © {new Date().getFullYear()} BENGKELKU. System Access.
+          © {new Date().getFullYear()} APEX GARAGE. System Access.
         </p>
       </div>
 

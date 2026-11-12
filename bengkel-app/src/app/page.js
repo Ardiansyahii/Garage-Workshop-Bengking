@@ -173,8 +173,8 @@ export default function LandingPage() {
       {/* 1. NAVBAR */}
       <nav className="fixed top-0 w-full z-50 px-6 py-4 flex justify-between items-center bg-white/70 backdrop-blur-md border-b border-black/[0.06]">
         <div className="text-xl font-black tracking-tighter flex items-center gap-2">
-          <Wrench className="w-5 h-5 text-zinc-900" /> BENGKEL
-          <span className="text-zinc-500">KU</span>
+          <Wrench className="w-5 h-5 text-zinc-900" />APEX 
+          <span className="text-zinc-500">GARAGE</span>
         </div>
         <div className="hidden md:flex gap-8 text-sm font-semibold">
           <Link
@@ -276,7 +276,7 @@ export default function LandingPage() {
 
               <Image
                 src="/assets/hero-vehicle.png"
-                alt="Mobil dan sepeda motor yang dapat diservis melalui BengkelKu"
+                alt="Mobil dan sepeda motor yang dapat diservis melalui APEX GARAGE"
                 fill
                 priority
                 quality={85}
@@ -406,7 +406,7 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <p className="text-zinc-500 font-mono text-sm tracking-widest mb-4 uppercase">
-              Inovasi BengkelKu
+              Inovasi APEX GARAGE
             </p>
             <h2 className="text-4xl md:text-6xl font-black tracking-tighter">
               Kendali Penuh di
@@ -463,7 +463,7 @@ export default function LandingPage() {
               key={i}
               className="text-6xl md:text-8xl font-black text-white leading-none mr-8 tracking-tighter uppercase"
             >
-              BENGKELKU - WORKFLOW -
+              APEX GARAGE - WORKFLOW -
             </h2>
           ))}
         </div>
@@ -550,7 +550,7 @@ export default function LandingPage() {
             <div className="flex gap-2 border-b border-zinc-200 pb-4 mb-4">
               <Monitor className="w-5 h-5 text-zinc-500" />
               <span className="text-xs font-mono text-zinc-500">
-                app.bengkelku.id/dashboard
+                app.APEXGARAGE.id/dashboard
               </span>
             </div>
             <div className="flex-1 flex gap-6">
@@ -611,7 +611,7 @@ export default function LandingPage() {
               {
                 name: "Anita K.",
                 role: "Pekerja Kantoran",
-                msg: "Dulu sering takut ditipu bengkel soal harga. Di BengkelKu, harganya fix di awal. Sangat transparan.",
+                msg: "Dulu sering takut ditipu bengkel soal harga. Di APEX GARAGE, harganya fix di awal. Sangat transparan.",
               },
               {
                 name: "Ridwan M.",
@@ -751,7 +751,7 @@ export default function LandingPage() {
           </div>
         </div>
         <div className="max-w-7xl mx-auto mt-8 pt-8 border-t border-zinc-200 text-center text-xs font-mono text-zinc-500">
-          &copy; {new Date().getFullYear()} BENGKELKU. HAK CIPTA DILINDUNGI.
+          &copy; {new Date().getFullYear()} APEX GARAGE. HAK CIPTA DILINDUNGI.
         </div>
       </footer>
     </div>
