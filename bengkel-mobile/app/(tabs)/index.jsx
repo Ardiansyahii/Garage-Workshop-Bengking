@@ -38,10 +38,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 // (dibatasi agar tidak terlalu tinggi saat dibuka di browser/web)
 const HERO_HEIGHT = Math.min(520, Math.max(380, Math.round(SCREEN_HEIGHT * 0.52)));
 
-// Ganti dengan path gambar lokal kamu, contoh:
-// const workshopBg = require("../assets/workshop-bg.png");
-// lalu pakai <Image source={workshopBg} ... />
-const WORKSHOP_BG = require("../../assets/workshop-bg.png");
+const WORKSHOP_BG = require("../../assets/hero-vehicles.jpg");
 
 export default function LandingScreen() {
   const router = useRouter();
@@ -146,12 +143,12 @@ export default function LandingScreen() {
           ]}
           onLayout={(e) => setHeroWidth(e.nativeEvent.layout.width)}
         >
+          {/* Gambar memenuhi seluruh hero (tanpa area putih / overlay) */}
           <Image
             source={WORKSHOP_BG}
-            style={StyleSheet.absoluteFill}
+            style={styles.heroImage}
             resizeMode="cover"
           />
-          <View style={styles.heroOverlay} />
 
           <Animated.View
             style={{
@@ -401,49 +398,48 @@ const styles = StyleSheet.create({
   hero: {
     height: HERO_HEIGHT,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     overflow: "hidden",
-    backgroundColor: "#27272a",
+    backgroundColor: "#fff",
   },
-  heroOverlay: {
+  heroImage: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.35)",
+    width: "100%",
+    height: "100%",
   },
   // Lingkaran besar berwarna putih; hanya bagian atasnya yang terlihat
   // sehingga membentuk lengkungan halus di bawah gambar.
   heroCurve: {
     position: "absolute",
     backgroundColor: "#fff",
+    borderWidth: 2,
+    borderColor: "#18181b",
   },
   logoCircle: {
     width: 84,
     height: 84,
     borderRadius: 42,
     backgroundColor: "#fff",
+    borderWidth: 2,
+    borderColor: "#18181b",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 14,
   },
   brandName: {
-    color: "#fff",
+    color: "#18181b",
     fontSize: 32,
     fontWeight: "800",
     letterSpacing: 1,
-    textShadowColor: "rgba(0,0,0,0.35)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 6,
   },
   brandTagline: {
-    color: "#fff",
+    color: "#52525b",
     fontSize: 14,
     fontWeight: "600",
     marginTop: 4,
     textAlign: "center",
-    textShadowColor: "rgba(0,0,0,0.35)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 6,
   },
 
   // WELCOME

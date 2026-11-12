@@ -48,9 +48,9 @@ export default function BookingPage() {
         icon: "warning",
         title: "Akses Dibatasi",
         text: "Silakan masuk atau daftar terlebih dahulu untuk melakukan booking.",
-        background: "#09090b",
-        color: "#f4f4f5",
-        confirmButtonColor: "#dc2626",
+        background: "#FFFFFF",
+        color: "#111111",
+        confirmButtonColor: "#111111",
       }).then(() => {
         window.location.href = "/login";
       });
@@ -127,9 +127,9 @@ export default function BookingPage() {
         icon: "error",
         title: "Bengkel Tutup",
         text: `Maaf, ${selectedBengkel.name} tutup/libur pada hari ${dayName}. Silakan pilih tanggal lain.`,
-        background: "#09090b",
-        color: "#f4f4f5",
-        confirmButtonColor: "#dc2626",
+        background: "#FFFFFF",
+        color: "#111111",
+        confirmButtonColor: "#111111",
       });
       setFormData({ ...formData, booking_date: "", booking_time: "" });
       return;
@@ -147,8 +147,8 @@ export default function BookingPage() {
         icon: "info",
         title: "Pilih Tanggal Dulu",
         text: "Silakan tentukan tanggal servis terlebih dahulu.",
-        background: "#09090b",
-        color: "#f4f4f5",
+        background: "#FFFFFF",
+        color: "#111111",
       });
       setFormData({ ...formData, booking_time: "" });
       return;
@@ -176,9 +176,9 @@ export default function BookingPage() {
         icon: "error",
         title: "Di Luar Jam Operasional",
         text: `Pada hari tersebut, bengkel buka dari jam ${openTime} sampai ${closeTime}.`,
-        background: "#09090b",
-        color: "#f4f4f5",
-        confirmButtonColor: "#dc2626",
+        background: "#FFFFFF",
+        color: "#111111",
+        confirmButtonColor: "#111111",
       });
       setFormData({ ...formData, booking_time: "" });
       return;
@@ -195,8 +195,8 @@ export default function BookingPage() {
         icon: "warning",
         title: "Data Belum Lengkap",
         text: "Pastikan Anda sudah memilih bengkel dan layanan di sisi kiri.",
-        background: "#09090b",
-        color: "#f4f4f5",
+        background: "#FFFFFF",
+        color: "#111111",
       });
       return;
     }
@@ -224,9 +224,9 @@ export default function BookingPage() {
           icon: "success",
           title: "Booking Berhasil!",
           text: `Pesanan Anda sudah masuk antrean bengkel.`,
-          background: "#09090b",
-          color: "#f4f4f5",
-          confirmButtonColor: "#dc2626",
+          background: "#FFFFFF",
+          color: "#111111",
+          confirmButtonColor: "#111111",
         }).then(() => {
           window.location.href = "/"; // Atau arahkan ke dashboard pelanggan jika sudah ada
         });
@@ -235,8 +235,8 @@ export default function BookingPage() {
           icon: "error",
           title: "Gagal Booking",
           text: data.message,
-          background: "#09090b",
-          color: "#f4f4f5",
+          background: "#FFFFFF",
+          color: "#111111",
         });
       }
     } catch (error) {
@@ -244,17 +244,17 @@ export default function BookingPage() {
         icon: "error",
         title: "Error Jaringan",
         text: "Gagal terhubung ke server.",
-        background: "#09090b",
-        color: "#f4f4f5",
+        background: "#FFFFFF",
+        color: "#111111",
       });
     }
   };
 
   if (isLoading || !user) {
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4 text-white">
-        <Wrench className="w-8 h-8 text-red-600 animate-spin" />
-        <p className="font-bold text-zinc-500 text-sm animate-pulse">
+      <div className="min-h-screen bg-[#F7F7F7] flex flex-col items-center justify-center gap-4 text-[#111111]">
+        <Wrench className="w-8 h-8 text-[#111111] animate-spin" />
+        <p className="font-bold text-[#6B7280] text-sm animate-pulse">
           Menyiapkan Ruang Reservasi...
         </p>
       </div>
@@ -262,22 +262,22 @@ export default function BookingPage() {
   }
 
   return (
-    <main className="relative min-h-screen flex flex-col md:flex-row text-white font-sans antialiased selection:bg-red-600 selection:text-white">
+    <main className="relative min-h-screen flex flex-col md:flex-row text-[#111111] font-sans antialiased selection:bg-[#111111] selection:text-white">
       {/* BACKGROUND GAMBAR */}
       <div className="absolute inset-0 z-0 fixed pointer-events-none">
         <img
           src="/workshop-bg.png"
           alt="Workshop Background"
-          className="w-full h-full object-cover object-center filter brightness-[0.4] contrast-125"
+          className="w-full h-full object-cover object-center filter grayscale brightness-[0.9] contrast-125"
         />
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-md" />
+        <div className="absolute inset-0 bg-[#F7F7F7]/90 backdrop-blur-md" />
       </div>
 
       {/* SISI KIRI: DINAMIS (DAFTAR BENGKEL -> DAFTAR LAYANAN) */}
-      <section className="relative z-10 w-full md:w-5/12 bg-zinc-950/80 backdrop-blur-xl border-r border-zinc-900/80 flex flex-col p-6 md:p-10 md:h-screen md:overflow-y-auto custom-scrollbar">
+      <section className="relative z-10 w-full md:w-5/12 bg-white/80 backdrop-blur-xl border-r border-[#E5E5E5] flex flex-col p-6 md:p-10 md:h-screen md:overflow-y-auto custom-scrollbar">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 text-xs font-semibold text-zinc-400 hover:text-white mb-8 transition group w-fit"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-[#6B7280] hover:text-[#111111] mb-8 transition group w-fit"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />{" "}
           Kembali ke Beranda
@@ -296,7 +296,7 @@ export default function BookingPage() {
               <h2 className="text-3xl font-black tracking-tight mb-2">
                 Pilih Bengkel.
               </h2>
-              <p className="text-zinc-400 text-xs md:text-sm mb-6 leading-relaxed">
+              <p className="text-[#6B7280] text-xs md:text-sm mb-6 leading-relaxed">
                 Pilih lokasi bengkel mitra terdekat untuk perawatan kendaraan
                 Anda.
               </p>
@@ -306,20 +306,20 @@ export default function BookingPage() {
                   <div
                     key={bengkel.id}
                     onClick={() => handleSelectBengkel(bengkel)}
-                    className="bg-zinc-900/50 hover:bg-zinc-900 border border-zinc-800/80 p-5 rounded-2xl cursor-pointer transition group"
+                    className="bg-white hover:bg-[#F1F1F1] border border-[#E5E5E5] p-5 rounded-2xl cursor-pointer transition group"
                   >
-                    <h3 className="font-bold text-white group-hover:text-red-500 transition mb-2">
+                    <h3 className="font-bold text-[#111111] group-hover:text-[#333333] transition mb-2">
                       {bengkel.name}
                     </h3>
-                    <p className="text-xs text-zinc-400 flex items-start gap-1.5 mb-1">
+                    <p className="text-xs text-[#6B7280] flex items-start gap-1.5 mb-1">
                       <MapPin className="w-3.5 h-3.5 shrink-0" />{" "}
                       {bengkel.address}
                     </p>
-                    <div className="flex justify-between items-center mt-4 pt-4 border-t border-zinc-800">
-                      <span className="text-[10px] bg-red-600/10 text-red-500 px-2 py-1 rounded font-bold uppercase tracking-wider">
+                    <div className="flex justify-between items-center mt-4 pt-4 border-t border-[#E5E5E5]">
+                      <span className="text-[10px] bg-[#111111]/10 text-[#111111] px-2 py-1 rounded font-bold uppercase tracking-wider">
                         Mitra Aktif
                       </span>
-                      <ChevronRight className="w-4 h-4 text-zinc-500 group-hover:text-red-500 group-hover:translate-x-1 transition" />
+                      <ChevronRight className="w-4 h-4 text-[#9CA3AF] group-hover:text-[#111111] group-hover:translate-x-1 transition" />
                     </div>
                   </div>
                 ))}
@@ -336,25 +336,25 @@ export default function BookingPage() {
             >
               <button
                 onClick={handleBackToBengkels}
-                className="mb-6 flex items-center gap-2 text-xs font-bold text-red-500 hover:text-red-400 transition bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/20"
+                className="mb-6 flex items-center gap-2 text-xs font-bold text-[#111111] hover:text-[#333333] transition bg-[#111111]/5 px-3 py-1.5 rounded-lg border border-[#E5E5E5]"
               >
                 <Store className="w-3.5 h-3.5" /> Ganti Bengkel
               </button>
 
-              <h2 className="text-3xl font-black tracking-tight mb-2 text-red-500">
+              <h2 className="text-3xl font-black tracking-tight mb-2 text-[#111111]">
                 {selectedBengkel.name}
               </h2>
-              <p className="text-zinc-400 text-xs md:text-sm mb-6 leading-relaxed flex items-start gap-1.5">
-                <MapPin className="w-4 h-4 shrink-0 text-zinc-500" />{" "}
+              <p className="text-[#6B7280] text-xs md:text-sm mb-6 leading-relaxed flex items-start gap-1.5">
+                <MapPin className="w-4 h-4 shrink-0 text-[#9CA3AF]" />{" "}
                 {selectedBengkel.address}
               </p>
 
-              <h3 className="text-sm font-bold text-white mb-4 border-b border-zinc-800 pb-2">
+              <h3 className="text-sm font-bold text-[#111111] mb-4 border-b border-[#E5E5E5] pb-2">
                 Pilih Layanan Servis
               </h3>
 
               {services.length === 0 ? (
-                <div className="text-center p-6 border border-dashed border-zinc-800 rounded-2xl text-zinc-500 text-xs">
+                <div className="text-center p-6 border border-dashed border-[#E5E5E5] rounded-2xl text-[#6B7280] text-xs">
                   Bengkel ini belum mendaftarkan layanannya.
                 </div>
               ) : (
@@ -369,20 +369,20 @@ export default function BookingPage() {
                           service_name: service.service_name,
                         })
                       }
-                      className={`p-4 rounded-2xl border cursor-pointer transition flex items-center justify-between ${formData.service_id === service.id ? "bg-red-600/10 border-red-500 shadow-[0_0_15px_rgba(220,38,38,0.15)]" : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-600"}`}
+                      className={`p-4 rounded-2xl border cursor-pointer transition flex items-center justify-between ${formData.service_id === service.id ? "bg-[#111111]/5 border-[#111111] shadow-[0_0_15px_rgba(17,17,17,0.15)]" : "bg-white border-[#E5E5E5] hover:border-[#9CA3AF]"}`}
                     >
                       <div>
-                        <div className="font-bold text-sm text-white flex items-center gap-2">
+                        <div className="font-bold text-sm text-[#111111] flex items-center gap-2">
                           {formData.service_id === service.id && (
-                            <CheckCircle2 className="w-4 h-4 text-red-500" />
+                            <CheckCircle2 className="w-4 h-4 text-[#111111]" />
                           )}{" "}
                           {service.service_name}
                         </div>
-                        <p className="text-xs text-zinc-400 mt-1">
+                        <p className="text-xs text-[#6B7280] mt-1">
                           {service.description || "Perawatan standar"}
                         </p>
                       </div>
-                      <div className="font-mono font-bold text-red-500">
+                      <div className="font-mono font-bold text-[#111111]">
                         {service.price}
                       </div>
                     </div>
@@ -396,45 +396,45 @@ export default function BookingPage() {
 
       {/* SISI KANAN: FORM BOOKING */}
       <section className="relative z-10 w-full md:w-7/12 flex items-center justify-center p-6 md:p-12 md:h-screen md:overflow-y-auto">
-        <div className="w-full max-w-lg bg-zinc-950/85 backdrop-blur-2xl p-8 md:p-10 rounded-3xl border border-zinc-800/80 shadow-2xl my-auto relative overflow-hidden">
+        <div className="w-full max-w-lg bg-white/90 backdrop-blur-2xl p-8 md:p-10 rounded-3xl border border-[#E5E5E5] shadow-2xl my-auto relative overflow-hidden">
           {/* Visual Efek */}
-          <div className="absolute -top-32 -right-32 w-64 h-64 bg-red-600/10 rounded-full blur-[80px] pointer-events-none" />
+          <div className="absolute -top-32 -right-32 w-64 h-64 bg-[#111111]/5 rounded-full blur-[80px] pointer-events-none" />
 
           <div className="mb-8 relative z-10">
-            <h3 className="text-2xl font-black tracking-tight text-white mb-1">
+            <h3 className="text-2xl font-black tracking-tight text-[#111111] mb-1">
               Form Reservasi
             </h3>
-            <p className="text-zinc-400 text-xs">
+            <p className="text-[#6B7280] text-xs">
               Atur kendaraan dan jadwal pengerjaan.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
             {/* Indikator Bengkel & Layanan Terpilih */}
-            <div className="bg-black/50 border border-zinc-800 p-4 rounded-2xl mb-2 space-y-3">
+            <div className="bg-[#F7F7F7] border border-[#E5E5E5] p-4 rounded-2xl mb-2 space-y-3">
               <div className="flex justify-between items-center text-xs">
-                <span className="text-zinc-500 font-semibold flex items-center gap-1.5">
+                <span className="text-[#6B7280] font-semibold flex items-center gap-1.5">
                   <Store className="w-3.5 h-3.5" /> Bengkel
                 </span>
-                <span className="font-bold text-white text-right">
+                <span className="font-bold text-[#111111] text-right">
                   {selectedBengkel ? (
                     selectedBengkel.name
                   ) : (
-                    <span className="text-red-500 animate-pulse">
+                    <span className="text-[#4B5563] animate-pulse">
                       Pilih di sisi kiri...
                     </span>
                   )}
                 </span>
               </div>
-              <div className="flex justify-between items-center text-xs border-t border-zinc-800/50 pt-3">
-                <span className="text-zinc-500 font-semibold flex items-center gap-1.5">
+              <div className="flex justify-between items-center text-xs border-t border-[#E5E5E5] pt-3">
+                <span className="text-[#6B7280] font-semibold flex items-center gap-1.5">
                   <Briefcase className="w-3.5 h-3.5" /> Layanan
                 </span>
-                <span className="font-bold text-white text-right">
+                <span className="font-bold text-[#111111] text-right">
                   {formData.service_name ? (
                     formData.service_name
                   ) : (
-                    <span className="text-red-500 animate-pulse">
+                    <span className="text-[#4B5563] animate-pulse">
                       Pilih di sisi kiri...
                     </span>
                   )}
@@ -444,11 +444,11 @@ export default function BookingPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-zinc-400 mb-1.5">
+                <label className="block text-xs font-semibold text-[#6B7280] mb-1.5">
                   Nama Kendaraan
                 </label>
                 <div className="relative">
-                  <Car className="absolute left-3 top-3.5 w-4 h-4 text-zinc-500" />
+                  <Car className="absolute left-3 top-3.5 w-4 h-4 text-[#9CA3AF]" />
                   <input
                     type="text"
                     name="vehicle_name"
@@ -457,14 +457,14 @@ export default function BookingPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, vehicle_name: e.target.value })
                     }
-                    className="w-full bg-zinc-900 border border-zinc-800 pl-10 pr-4 py-3 rounded-xl text-xs text-white outline-none focus:border-red-600 transition"
+                    className="w-full bg-[#F1F1F1] border border-[#E5E5E5] pl-10 pr-4 py-3 rounded-xl text-xs text-[#111111] outline-none focus:border-[#111111] transition"
                     placeholder="Cth: Honda NMAX"
                     disabled={!selectedBengkel || !formData.service_id}
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-zinc-400 mb-1.5">
+                <label className="block text-xs font-semibold text-[#6B7280] mb-1.5">
                   Plat Nomor
                 </label>
                 <input
@@ -475,7 +475,7 @@ export default function BookingPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, license_plate: e.target.value })
                   }
-                  className="w-full bg-zinc-900 border border-zinc-800 px-4 py-3 rounded-xl text-xs text-white outline-none focus:border-red-600 transition font-mono uppercase"
+                  className="w-full bg-[#F1F1F1] border border-[#E5E5E5] px-4 py-3 rounded-xl text-xs text-[#111111] outline-none focus:border-[#111111] transition font-mono uppercase"
                   placeholder="B 1234 XYZ"
                   disabled={!selectedBengkel || !formData.service_id}
                 />
@@ -484,34 +484,34 @@ export default function BookingPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-zinc-400 mb-1.5">
+                <label className="block text-xs font-semibold text-[#6B7280] mb-1.5">
                   Tanggal Servis
                 </label>
                 <div className="relative">
-                  <Calendar className="absolute left-3 top-3.5 w-4 h-4 text-zinc-500" />
+                  <Calendar className="absolute left-3 top-3.5 w-4 h-4 text-[#9CA3AF]" />
                   <input
                     type="date"
                     required
                     min={new Date().toISOString().split("T")[0]}
                     value={formData.booking_date}
                     onChange={handleDateChange}
-                    className="w-full bg-zinc-900 border border-zinc-800 pl-10 pr-4 py-3 rounded-xl text-xs text-white outline-none focus:border-red-600 transition cursor-pointer"
+                    className="w-full bg-[#F1F1F1] border border-[#E5E5E5] pl-10 pr-4 py-3 rounded-xl text-xs text-[#111111] outline-none focus:border-[#111111] transition cursor-pointer"
                     disabled={!selectedBengkel || !formData.service_id}
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-zinc-400 mb-1.5">
+                <label className="block text-xs font-semibold text-[#6B7280] mb-1.5">
                   Jam Servis
                 </label>
                 <div className="relative">
-                  <Clock className="absolute left-3 top-3.5 w-4 h-4 text-zinc-500" />
+                  <Clock className="absolute left-3 top-3.5 w-4 h-4 text-[#9CA3AF]" />
                   <input
                     type="time"
                     required
                     value={formData.booking_time}
                     onChange={handleTimeChange}
-                    className="w-full bg-zinc-900 border border-zinc-800 pl-10 pr-4 py-3 rounded-xl text-xs text-white outline-none focus:border-red-600 transition cursor-pointer"
+                    className="w-full bg-[#F1F1F1] border border-[#E5E5E5] pl-10 pr-4 py-3 rounded-xl text-xs text-[#111111] outline-none focus:border-[#111111] transition cursor-pointer"
                     disabled={!formData.booking_date}
                   />
                 </div>
@@ -525,7 +525,7 @@ export default function BookingPage() {
                 !formData.service_id ||
                 !formData.booking_time
               }
-              className="w-full bg-red-600 hover:bg-red-700 disabled:bg-zinc-800 disabled:text-zinc-600 text-white font-bold py-4 rounded-xl shadow-lg transition mt-6 text-xs flex justify-center items-center gap-2"
+              className="w-full bg-[#111111] hover:bg-[#333333] disabled:bg-[#E5E5E5] disabled:text-[#9CA3AF] text-white font-bold py-4 rounded-xl shadow-lg transition mt-6 text-xs flex justify-center items-center gap-2"
             >
               <CheckCircle2 className="w-4 h-4" /> Konfirmasi Reservasi
             </button>
