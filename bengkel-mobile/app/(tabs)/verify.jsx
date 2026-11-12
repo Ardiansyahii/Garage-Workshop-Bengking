@@ -188,7 +188,7 @@ export default function VerifyScreen() {
               <View style={styles.logoIcon}>
                 <Wrench size={16} color="#FFFFFF" />
               </View>
-              <Text style={styles.logoText}>BENGKELKU</Text>
+              <Text style={styles.logoText}>APEX GARAGE</Text>
             </Animated.View>
 
             {/* JUDUL */}
@@ -294,7 +294,7 @@ export default function VerifyScreen() {
             </View>
 
             <Text style={styles.footerText}>
-              © {new Date().getFullYear()} BENGKELKU. All rights reserved.
+              © {new Date().getFullYear()} APEX GARAGE. All rights reserved.
             </Text>
           </ScrollView>
 

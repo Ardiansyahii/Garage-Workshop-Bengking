@@ -223,7 +223,7 @@ export default function ForgotPasswordScreen() {
             <View style={styles.brandIcon}>
               <Wrench size={16} color="#FFFFFF" />
             </View>
-            <Text style={styles.brandText}>BENGKELKU</Text>
+            <Text style={styles.brandText}>APEX GARAGE</Text>
           </View>
 
           {/* Ikon ilustrasi gembok */}
@@ -350,7 +350,7 @@ export default function ForgotPasswordScreen() {
 
         {/* COPYRIGHT */}
         <Text style={styles.copyrightText}>
-          © {new Date().getFullYear()} BENGKELKU. System Access.
+          © {new Date().getFullYear()} APEX GARAGE. System Access.
         </Text>
       </ScrollView>
 

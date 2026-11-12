@@ -155,7 +155,7 @@ export default function LoginScreen() {
             <View style={styles.brandIcon}>
               <Wrench size={26} color="#FFFFFF" />
             </View>
-            <Text style={styles.brandText}>BENGKELKU</Text>
+            <Text style={styles.brandText}>APEX GARAGE</Text>
           </View>
 
           <Text style={styles.heroTitle}>Welcome Back!</Text>
@@ -305,15 +305,15 @@ export default function LoginScreen() {
             onPress={() => router.push(ROUTES.register)}
           >
             <Text style={styles.linkText}>
-              Belum punya akun?{" "}
-              <Text style={styles.highlightText}>Sign Up</Text>
+              Belum mempunyai akun?{"\n"}
+              <Text style={styles.highlightText}>Daftar dulu di sini</Text>
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* COPYRIGHT */}
         <Text style={styles.copyrightText}>
-          © {new Date().getFullYear()} BENGKELKU. System Access.
+          © {new Date().getFullYear()} APEX GARAGE. System Access.
         </Text>
       </ScrollView>
     </SafeAreaView>

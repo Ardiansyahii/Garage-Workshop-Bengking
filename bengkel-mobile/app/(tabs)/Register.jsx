@@ -361,7 +361,7 @@ export default function RegisterOnboardingScreen() {
         <View style={styles.logoIcon}>
           <Wrench size={22} color="#FFFFFF" />
         </View>
-        <Text style={styles.logoText}>BENGKELKU</Text>
+        <Text style={styles.logoText}>APEX GARAGE</Text>
       </Animated.View>
 
       <ScrollView
@@ -480,7 +480,7 @@ export default function RegisterOnboardingScreen() {
         <View style={styles.logoIcon}>
           <Wrench size={22} color="#FFFFFF" />
         </View>
-        <Text style={styles.logoText}>BENGKELKU</Text>
+        <Text style={styles.logoText}>APEX GARAGE</Text>
       </View>
 
       <View style={styles.formCard}>
@@ -667,7 +667,7 @@ export default function RegisterOnboardingScreen() {
       </View>
 
       <Text style={styles.footerText}>
-        © {new Date().getFullYear()} BENGKELKU. All rights reserved.
+        © {new Date().getFullYear()} APEX GARAGE. All rights reserved.
       </Text>
     </View>
   );

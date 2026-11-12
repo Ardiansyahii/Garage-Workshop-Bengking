@@ -168,7 +168,8 @@ export default function LoginScreen() {
         <View style={styles.formCard}>
           <Text style={styles.formTitle}>Login Portal</Text>
           <Text style={styles.formSubtitle}>
-            Masukkan kredensial WhatsApp dan password Anda.
+            Sudah punya akun? Masuk dengan nomor WhatsApp dan password. Jika
+            belum, daftar terlebih dahulu.
           </Text>
 
           {/* INPUT WHATSAPP */}
@@ -268,10 +269,12 @@ export default function LoginScreen() {
           <TouchableOpacity
             style={styles.linkContainer}
             onPress={() => router.push(ROUTES.register)}
+            accessibilityRole="button"
+            accessibilityLabel="Belum punya akun? Daftar dulu"
           >
             <Text style={styles.linkText}>
-              Belum punya akun?{" "}
-              <Text style={styles.highlightText}>Register di sini</Text>
+              Belum mempunyai akun?{"\n"}
+              <Text style={styles.highlightText}>Daftar dulu di sini</Text>
             </Text>
           </TouchableOpacity>
         </View>
@@ -486,15 +489,18 @@ const styles = StyleSheet.create({
   },
   linkContainer: {
     alignItems: "center",
+    paddingVertical: 6,
   },
   linkText: {
     color: "#a1a1aa",
-    fontSize: 11,
+    fontSize: 13,
+    lineHeight: 20,
     textAlign: "center",
   },
   highlightText: {
     color: "#ef4444",
     fontWeight: "bold",
+    textDecorationLine: "underline",
   },
   copyrightText: {
     color: "#52525b",

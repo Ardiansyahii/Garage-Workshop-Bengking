@@ -120,7 +120,7 @@ export default function LandingScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#18181b" />
-        <Text style={styles.loadingText}>Memuat BengkelKu...</Text>
+        <Text style={styles.loadingText}>Memuat APEX GARAGE...</Text>
       </View>
     );
   }
@@ -162,7 +162,7 @@ export default function LandingScreen() {
             <View style={styles.logoCircle}>
               <Wrench size={34} color="#18181b" />
             </View>
-            <Text style={styles.brandName}>BENGKELKU</Text>
+            <Text style={styles.brandName}>APEX GARAGE</Text>
             <Text style={styles.brandTagline}>
               Platform Perawatan Otomotif Digital
             </Text>
@@ -365,7 +365,7 @@ export default function LandingScreen() {
         {/* FOOTER */}
         <View style={styles.footer}>
           <Text style={styles.footerCopy}>
-            © {new Date().getFullYear()} BENGKELKU. All rights reserved.
+            © {new Date().getFullYear()} APEX GARAGE. All rights reserved.
           </Text>
         </View>
       </ScrollView>
