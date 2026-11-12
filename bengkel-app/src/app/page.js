@@ -664,7 +664,7 @@ export default function LandingPage() {
                 className="border border-zinc-200 bg-[#FAFAFA] rounded-xl overflow-hidden"
               >
                 <button
-                  onClick={() => toggleFaq(idx)}
+                  onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
                   className="w-full flex justify-between items-center p-6 text-left font-bold text-zinc-900"
                 >
                   {faq.q}
